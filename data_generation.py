@@ -1,14 +1,7 @@
 import bpy
-import numpy as np
-import pathlib
-import math
-import os
-
-
-
-import bpy
 import mathutils
 import pathlib
+import numpy as np
 
 #create new object
 #x = (1.1,2.2,3.3,4.4)
@@ -33,6 +26,9 @@ def update_camera(camera, focus_point=mathutils.Vector((0.0, 0.0, 0.0)), distanc
     print('camera.location',camera.location)
     
 def look_at(obj_camera, point):
+    '''
+    make the camera look at the object
+    '''
     loc_camera = obj_camera.matrix_world.to_translation()
 
     direction = point - loc_camera
@@ -85,30 +81,52 @@ def get_dir_file_path():
 
 def add_camera(location,rotation,align = 'VIEW'):
     bpy.ops.object.camera_add(enter_editmode=False, align=align, location=location, rotation=rotation)
-    print(bpy.data.objects["Camera"])
+    
+def generate_cam_x_y(radius,level = 5,center = (0,0,0),num_loc = 100):
+    '''
+    generate camera location 
+    '''
+    locs = np.zeros((num_loc,2))
+    locs = np.concatenate((locs,np.ones((num_loc,1)) * level + center[2]),axis = 1)
+    
+    x_loc = np.random.uniform(-radius,radius,(num_loc,1))
+    print(x_loc.shape)
+    sign = np.random.choice([-1,1],(num_loc,1))
+    y_loc = sign * (radius ** 2 - x_loc ** 2) ** 0.5
+    
+    print(y_loc.shape)
+    for i in range(locs.shape[0]):
+        locs[i,0] = x_loc[i] + center[0]
+        locs[i,1] = y_loc[i] + center[1]
+    
+    return locs
+        
+    
+    
+    
 
 if __name__ == '__main__':
     delete_all()
     BASE_DIR, STL_DIR, all_STL = get_dir_file_path()
     add_mesh('custom_stl',1,(0,0,0),all_STL[3])
-    add_camera((5.0,2.0,3.0),(0,0,0))
+    add_camera((5.0,2.0,6.0),(0,0,0))
     
 #    print(bpy.context.object)
-    #select files
-
     
-    # Test
+    #selet object
     obj_camera = bpy.data.objects["Camera"]
     obj_other = bpy.data.objects['small B']
-
-    obj_camera.location = (5.0, 2.0, 3.0)
-    look_at(obj_camera, obj_other.matrix_world.to_translation())
-
-
-
-
+    cam_locs = generate_cam_x_y(5,obj_camera.location[2])
     
-    update_camera(bpy.data.objects['Camera'])
+    for i in range(30):
+        
+        obj_camera.location = (2.0, 2.0, 6.0)
+        look_at(obj_camera, obj_other.matrix_world.to_translation())
+
+#        update_camera(bpy.data.objects['Camera'])
+
+
+
 
 
 
