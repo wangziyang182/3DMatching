@@ -13,29 +13,32 @@ import numpy as np
 #    new_obj.location = (x[index],y[index],z[index])
 #    bpy.context.scene.objects.link(new_obj)
 
-def update_camera(camera, focus_point=mathutils.Vector((0.0, 0.0, 0.0)), distance=10.0):
-    
-    looking_direction = camera.location - focus_point
-    print('looking_direction',looking_direction)
-    rot_quat = looking_direction.to_track_quat('Z', 'Y')
-    print('rot_quat',rot_quat)
-    
-    camera.rotation_euler = rot_quat.to_euler()
-    print('camera.rotation_euler',camera.rotation_euler)
-    camera.location = rot_quat @ mathutils.Vector((0.0, 0.0, distance))
-    print('camera.location',camera.location)
+import bpy
+import mathutils
+import pathlib
+import numpy as np
+
+#create new object
+#x = (1.1,2.2,3.3,4.4)
+#y = (1.1,2.2,3.3,4.4)
+#z = (1.1,2.2,3.3,4.4)
+
+#for index,val in enumerate(x): 
+#    new_obj = bpy.data.objects.new('new_obj', None) 
+#    new_obj.location = (x[index],y[index],z[index])
+#    bpy.context.scene.objects.link(new_obj)
     
 def look_at(obj_camera, point):
     '''
     make the camera look at the object
     '''
     loc_camera = obj_camera.matrix_world.to_translation()
-
+    
     direction = point - loc_camera
-    # point the cameras '-Z' and use its 'Y' as up
+    
+    # Y up, -Z to
     rot_quat = direction.to_track_quat('-Z', 'Y')
 
-    # assume we're using euler rotation
     obj_camera.rotation_euler = rot_quat.to_euler()
     
 def delete_all():
@@ -101,9 +104,6 @@ def generate_cam_x_y(radius,level = 5,center = (0,0,0),num_loc = 100):
     
     return locs
         
-    
-    
-    
 
 if __name__ == '__main__':
     delete_all()
@@ -118,12 +118,20 @@ if __name__ == '__main__':
     obj_other = bpy.data.objects['small B']
     cam_locs = generate_cam_x_y(5,obj_camera.location[2])
     
-    for i in range(30):
+    for i in range(1):
+        print(cam_locs[i,:])
+        obj_camera.location = cam_locs[i,:]
         
-        obj_camera.location = (2.0, 2.0, 6.0)
+        #update the scence
+        bpy.context.view_layer.update()
+        print(obj_camera.matrix_world.to_translation())
+        print('before',obj_camera.rotation_euler)
         look_at(obj_camera, obj_other.matrix_world.to_translation())
-
+        print('after',obj_camera.rotation_euler)
 #        update_camera(bpy.data.objects['Camera'])
+
+
+
 
 
 
