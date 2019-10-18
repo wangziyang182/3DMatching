@@ -2,22 +2,7 @@ import bpy
 import mathutils
 import pathlib
 import numpy as np
-
-#create new object
-#x = (1.1,2.2,3.3,4.4)
-#y = (1.1,2.2,3.3,4.4)
-#z = (1.1,2.2,3.3,4.4)
-
-#for index,val in enumerate(x): 
-#    new_obj = bpy.data.objects.new('new_obj', None) 
-#    new_obj.location = (x[index],y[index],z[index])
-#    bpy.context.scene.objects.link(new_obj)
-
-import bpy
-import mathutils
-import pathlib
-import numpy as np
-
+import os
 #create new object
 #x = (1.1,2.2,3.3,4.4)
 #y = (1.1,2.2,3.3,4.4)
@@ -53,7 +38,7 @@ def delete_all():
 
     bpy.ops.object.delete()
 
-def add_mesh(shape,size,location,path = None):
+def add_mesh(shape,size,location,scale,path = None):
     '''
     add mesh to the scence, it can be primitive, or custom_stl
     '''
@@ -63,9 +48,9 @@ def add_mesh(shape,size,location,path = None):
     
     if shape == 'custom_stl':
         bpy.ops.import_mesh.stl(filepath=path)
-        bpy.context.object.scale[0] = 0.1
-        bpy.context.object.scale[1] = 0.1
-        bpy.context.object.scale[2] = 0.3
+        bpy.context.object.scale[0] = scale[0]
+        bpy.context.object.scale[1] = scale[1]
+        bpy.context.object.scale[2] = scale[2]
         
 #        bpy.context.scene.objects[1].scale[0] = 0.1
 #        bpy.context.scene.objects[1].scale[1] = 0.1
@@ -93,42 +78,60 @@ def generate_cam_x_y(radius,level = 5,center = (0,0,0),num_loc = 100):
     locs = np.concatenate((locs,np.ones((num_loc,1)) * level + center[2]),axis = 1)
     
     x_loc = np.random.uniform(-radius,radius,(num_loc,1))
-    print(x_loc.shape)
     sign = np.random.choice([-1,1],(num_loc,1))
     y_loc = sign * (radius ** 2 - x_loc ** 2) ** 0.5
     
-    print(y_loc.shape)
     for i in range(locs.shape[0]):
         locs[i,0] = x_loc[i] + center[0]
         locs[i,1] = y_loc[i] + center[1]
     
     return locs
-        
+
+def save_image(BASE_DIR,iteration):
+    file = BASE_DIR.joinpath('data').joinpath('frame-' +str(0) * (6 - len([char for char in str(iteration)])) + str(iteration))
+    color_file = str(file) + '.color.png'
+    bpy.context.scene.render.filepath = color_file
+    bpy.ops.render.render(write_still=True)
+    bpy.data.images['Render Result'].save_render(filepath = color_file)
 
 if __name__ == '__main__':
-    delete_all()
-    BASE_DIR, STL_DIR, all_STL = get_dir_file_path()
-    add_mesh('custom_stl',1,(0,0,0),all_STL[3])
-    add_camera((5.0,2.0,6.0),(0,0,0))
     
-#    print(bpy.context.object)
+    num_image = 10
+    print('\n' * 20 + 'start' + '-' * 30)
+    delete_all()
+    
+    #get the working directory
+    BASE_DIR, STL_DIR, all_STL = get_dir_file_path()
+    
+    #add custom stl file
+    add_mesh('custom_stl',1,(0,0,0),(0.2,0.2,0.2),all_STL[3])
+    add_camera((5.0,2.0,6.0),(0,0,0))
     
     #selet object
     obj_camera = bpy.data.objects["Camera"]
     obj_other = bpy.data.objects['small B']
-    cam_locs = generate_cam_x_y(5,obj_camera.location[2])
+    cam_locs = generate_cam_x_y(5,20,num_loc = num_image)
     
-    for i in range(1):
-        print(cam_locs[i,:])
-        obj_camera.location = cam_locs[i,:]
-        
-        #update the scence
+
+    obj = bpy.data.objects['Camera']
+    for num in range(num_image):
+        #change camera location
+        obj_camera.location = cam_locs[num,:]
         bpy.context.view_layer.update()
-        print(obj_camera.matrix_world.to_translation())
-        print('before',obj_camera.rotation_euler)
+        
+        #make the camera look at the object
         look_at(obj_camera, obj_other.matrix_world.to_translation())
-        print('after',obj_camera.rotation_euler)
-#        update_camera(bpy.data.objects['Camera'])
+        
+        #select the camera
+        bpy.context.scene.camera = bpy.context.object
+        obj = bpy.data.objects['Camera']
+        
+        #save the image
+        save_image(BASE_DIR,num)
+        
+
+
+
 
 
 
