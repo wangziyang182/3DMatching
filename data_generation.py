@@ -3,6 +3,7 @@ import mathutils
 import pathlib
 import numpy as np
 import os
+
 #create new object
 #x = (1.1,2.2,3.3,4.4)
 #y = (1.1,2.2,3.3,4.4)
@@ -87,6 +88,37 @@ def generate_cam_x_y(radius,level = 5,center = (0,0,0),num_loc = 100):
     
     return locs
 
+def get_pose(path, iteration):
+    """
+    get the pose of camera
+    """
+    
+    bpy.data.objects['Camera'].rotation_mode = 'QUATERNION'
+    q = bpy.data.objects['Camera'].rotation_quaternion
+    cam_location = bpy.data.objects['Camera'].matrix_world.to_translation()
+    
+    m = np.array(
+    [[1-2*q[2]*q[2]-2*q[3]*q[3], 2*q[1]*q[2]-2*q[0]*q[3],   2*q[1]*q[3]+2*q[0]*q[2],   cam_location[0]], 
+     [2*q[1]*q[2]+2*q[0]*q[3],   1-2*q[1]*q[1]-2*q[3]*q[3], 2*q[2]*q[3]-2*q[0]*q[1],   cam_location[1]],
+     [2*q[1]*q[3]-2*q[0]*q[2],   2*q[2]*q[3]+2*q[0]*q[1],   1-2*q[1]*q[1]-2*q[2]*q[2], cam_location[2]],
+     [0,                         0,                         0,                         1]])
+     
+    
+    if not os.path.exists(path.joinpath('data')):
+        os.chdir(path)
+        os.mkdir('data')
+    
+    
+    pose_path = str(path.joinpath('data').joinpath('frame-{:06}.pose.txt'.format(iteration)))
+    print(pose_path)
+    np.savetxt(pose_path , m)
+#    if not os.path.exists(g_syn_pose_folder):
+#        os.mkdir(g_syn_pose_folder)
+
+#    current_frame = bpy.context.scene.frame_current
+#    np.savetxt(os.path.join(pose_folder, 'blender-{:06}.pose.txt'.format(current_frame)), m)
+#    bpy.context.scene.frame_set(current_frame + 1)
+
 def save_image(BASE_DIR,iteration):
     file = BASE_DIR.joinpath('data').joinpath('frame-' +str(0) * (6 - len([char for char in str(iteration)])) + str(iteration))
     color_file = str(file) + '.color.png'
@@ -96,7 +128,7 @@ def save_image(BASE_DIR,iteration):
 
 if __name__ == '__main__':
     
-    num_image = 10
+    num_image = 1
     print('\n' * 20 + 'start' + '-' * 30)
     delete_all()
     
@@ -121,6 +153,7 @@ if __name__ == '__main__':
         
         #make the camera look at the object
         look_at(obj_camera, obj_other.matrix_world.to_translation())
+        get_pose(BASE_DIR,num)
         
         #select the camera
         bpy.context.scene.camera = bpy.context.object
