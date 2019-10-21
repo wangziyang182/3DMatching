@@ -27,12 +27,8 @@ def look_at(obj_camera, point):
     
     # Y up, -Z to
     rot_quat = direction.to_track_quat('-Z', 'Y')
-    print('is this changed?',rot_quat)
-    
-    print('is this changed?',rot_quat.to_euler())
-
     obj_camera.rotation_euler = rot_quat.to_euler()
-    print(obj_camera.matrix_world)
+
     
     bpy.context.view_layer.update()
     
@@ -281,16 +277,17 @@ def transform_and_save(path,num,obj,angle,location = (30,0,0)):
 #        vert.co = mat @ vert.co
 
     obj.matrix_world = obj.matrix_world @ mat
-    save_path_npy = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.npy'.format(iteration)))
-    save_path_txt = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.txt'.format(iteration)))
-    np.save(np.array(mat),save_path_npy)
-    np.savetxt(np.array(mat),save_path_txt)
+    save_path_npy = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.npy'.format(num)))
+    save_path_txt = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.txt'.format(num)))
+    
+    np.save(save_path_npy,np.array(obj.matrix_world @ mat))
+    np.savetxt(save_path_txt,np.array(obj.matrix_world @ mat))
         
         
 
 if __name__ == '__main__':
     
-    num_image = 0
+    num_image = 1
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
     
@@ -304,7 +301,7 @@ if __name__ == '__main__':
     
     #add custom stl file
     add_mesh('custom_stl',1,(0,0,0),(0.3,0.3,0.4),all_STL[3])
-    add_camera((0,0,0),(0,0,0))
+    add_camera(location = (15,0,0),rotation = (0,0,0))
     
     #save intrinsics
     cam = bpy.data.cameras["Camera"]
@@ -313,7 +310,7 @@ if __name__ == '__main__':
     #selet object
 
     obj = bpy.data.objects['small B']
-    cam_locs = generate_cam_x_y(5,20,num_loc = num_image)
+    cam_locs = generate_cam_x_y(5,12,center = (5,0,0),num_loc = num_image)
     
     #duplicate
     duplicate_obj(obj)
@@ -323,14 +320,14 @@ if __name__ == '__main__':
     for num in range(num_image):
         
         #rotate object and save object pose
-        transform_and_save(obj,angle = 180,location = (30,0,0))
+        transform_and_save(BASE_DIR,num,obj,angle = 300,location = (30,0,0))
         #change camera location
         obj_camera = bpy.data.objects["Camera"]
         obj_camera.location = cam_locs[num,:]
         bpy.context.view_layer.update()
         
         #make the camera look at the object
-        look_at(obj_camera, mathutils.Vector([0,0,0]))
+        look_at(obj_camera, mathutils.Vector([5,0,0]))
 
         get_pose(BASE_DIR,num) 
 #        #select the camera
