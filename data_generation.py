@@ -48,7 +48,33 @@ def reset_all():
     
     current_frame = bpy.context.scene.frame_current
     bpy.context.scene.frame_set(0)
+    
+    #change to metric system
+    bpy.context.scene.unit_settings.system = 'METRIC'
+    
+    #change the measure system
+    bpy.context.scene.unit_settings.length_unit = 'METERS'
+    
+    # create light datablock, set attributes
+    light_data = bpy.data.lights.new(name="light_2.80", type='POINT')
+    light_data.energy = 2500
 
+    # create new object with our light datablock
+    light_object = bpy.data.objects.new(name="light_2.80", object_data=light_data)
+
+    # link light object
+    bpy.context.collection.objects.link(light_object)
+
+#    # make it active 
+#    bpy.context.view_layer.objects.active = light_object
+
+    #change location
+    light_object.location = (4, 4, 10)
+
+    # update scene, if needed
+    dg = bpy.context.evaluated_depsgraph_get() 
+    dg.update()
+    
 def add_mesh(shape,size,location,scale,path = None):
     '''
     add mesh to the scence, it can be primitive, or custom_stl
@@ -83,20 +109,21 @@ def get_dir_file_path():
 
 def add_camera(location,rotation,align = 'VIEW'):
     bpy.ops.object.camera_add(enter_editmode=False, align=align, location=location, rotation=rotation)
-    bpy.data.cameras['Camera'].type = 'PERSP'
+#    cam = bpy.data.cameras['Camera']
     cam = bpy.context.object.data
     cam.clip_start = 0.5 
-    cam.clip_end = 30
-    cam.lens = 20
+    cam.clip_end = 10
+    cam.lens = 25
     cam.type = 'PERSP'
-    print(bpy.data.cameras['Camera'].type)
+
+#    cam.type = 'PERSP'
 #    bpy.context.object.data.lens = 20
 
     
     
     
     
-def generate_cam_x_y(radius,level = 5,center = (0,0,0),num_loc = 100):
+def generate_cam_x_y(radius,level = 2,center = (0,0,0),num_loc = 100):
     '''
     generate camera location 
     '''
@@ -113,7 +140,7 @@ def generate_cam_x_y(radius,level = 5,center = (0,0,0),num_loc = 100):
     
     return locs
 
-def get_pose(path, iteration):
+def get_camera_pose(path, iteration):
     """
     get the pose of camera
     """
@@ -127,11 +154,14 @@ def get_pose(path, iteration):
      [2*q[1]*q[2]+2*q[0]*q[3],   1-2*q[1]*q[1]-2*q[3]*q[3], 2*q[2]*q[3]-2*q[0]*q[1],   cam_location[1]],
      [2*q[1]*q[3]-2*q[0]*q[2],   2*q[2]*q[3]+2*q[0]*q[1],   1-2*q[1]*q[1]-2*q[2]*q[2], cam_location[2]],
      [0,                         0,                         0,                         1]])
-     
-    pose_path = str(path.joinpath('data').joinpath('frame-{:06}.pose.txt'.format(iteration)))
-    np.savetxt(pose_path , m)
+    
+    
+    print(m)
+    pose_path = str(path.joinpath('data').joinpath('frame-camera-{:06}.pose.npy'.format(iteration)))
+    np.save(pose_path , m)
     bpy.data.objects['Camera'].rotation_mode = 'XYZ'
     
+        
 def save_camera_intrinsics(path,camd):
     
     def get_sensor_size(sensor_fit, sensor_x, sensor_y):
@@ -147,8 +177,10 @@ def save_camera_intrinsics(path,camd):
                 return 'VERTICAL'
         return sensor_fit
     
+    
     scene = bpy.context.scene
     f_in_mm = camd.lens
+    
     scale = scene.render.resolution_percentage / 100
     resolution_x_in_px = scale * scene.render.resolution_x
     resolution_y_in_px = scale * scene.render.resolution_y
@@ -165,6 +197,7 @@ def save_camera_intrinsics(path,camd):
     else:
         view_fac_in_px = pixel_aspect_ratio * resolution_y_in_px
     pixel_size_mm_per_px = sensor_size_in_mm / f_in_mm / view_fac_in_px
+    
     s_u = 1 / pixel_size_mm_per_px
     s_v = 1 / pixel_size_mm_per_px / pixel_aspect_ratio
 
@@ -178,9 +211,9 @@ def save_camera_intrinsics(path,camd):
                   [0,  0,   1]])
     
     intri_path = str(path.joinpath('data').joinpath('camera-intrinsics.npy'))
-    intri_path_txt = str(path.joinpath('data').joinpath('camera-intrinsics.txt'))
+#    intri_path_txt = str(path.joinpath('data').joinpath('camera-intrinsics.txt'))
     np.save(intri_path, intrinsics)
-    np.savetxt(intri_path_txt , intrinsics)
+#    np.savetxt(intri_path_txt , intrinsics)
     
     
 
@@ -206,28 +239,31 @@ def save_image(BASE_DIR,rgb = True, depth = True):
         depth_file_output_node = tree.nodes.new('CompositorNodeOutputFile')
         
         g_depth_clip_start = 0.5
-        g_depth_clip_end = 4
+        g_depth_clip_end = 30
         
         g_depth_color_mode = 'BW'
         g_depth_color_depth = '16'
         g_depth_file_format = 'PNG'
+#        g_depth_file_format = 'OPEN_EXR'
         
-        map_value_node.offset[0] = -g_depth_clip_start
-        map_value_node.size[0] = 1 / (g_depth_clip_end - g_depth_clip_start)
-        map_value_node.use_min = True
-        map_value_node.use_max = True
-        map_value_node.min[0] = 0.0
-        map_value_node.max[0] = 1.0     
+#        map_value_node.offset[0] = -g_depth_clip_start
+#        map_value_node.size[0] = 1 / (g_depth_clip_end - g_depth_clip_start)
+#        map_value_node.use_min = True
+#        map_value_node.use_max = True
+#        map_value_node.min[0] = 0.0
+#        map_value_node.max[0] = 1.0     
+        map_value_node.size[0] = 1/ bpy.context.object.data.clip_end
         
         depth_file_output_node.format.color_mode = g_depth_color_mode
         depth_file_output_node.format.color_depth = g_depth_color_depth
         depth_file_output_node.format.file_format = g_depth_file_format 
         depth_file_output_node.base_path = str(BASE_DIR.joinpath('data'))
 
-#        links.new(render_layer_node.outputs[2], map_value_node.inputs[0])
-#        links.new(map_value_node.outputs[0], depth_file_output_node.inputs[0])
+        #normalized by far cliping
+        links.new(render_layer_node.outputs[2], map_value_node.inputs[0])
+        links.new(map_value_node.outputs[0], depth_file_output_node.inputs[0])
         
-        links.new(render_layer_node.outputs[2], depth_file_output_node.inputs[0])
+#        links.new(render_layer_node.outputs[2], depth_file_output_node.inputs[0])
         depth_file_output_node.file_slots[0].path = 'frame-######.depth'
 
     #color node
@@ -252,9 +288,11 @@ def save_image(BASE_DIR,rgb = True, depth = True):
     scene.render.resolution_x = 640
     scene.render.resolution_y = 640
     scene.render.resolution_percentage = 100
-    bpy.context.scene.render.engine = 'CYCLES'
+    bpy.context.scene.render.engine = 'BLENDER_EEVEE'
     bpy.context.scene.cycles.device = 'GPU'
-    bpy.context.scene.render.image_settings.color_depth = '8'
+    bpy.context.scene.render.image_settings.color_depth = '16'
+    scene.view_settings.view_transform = 'Raw'
+    scene.sequencer_colorspace_settings.name = 'Raw'
 
     
 
@@ -267,23 +305,57 @@ def duplicate_obj(obj):
     obj_copy = obj.copy()
     obj_copy.data = obj_copy.data.copy()
     bpy.context.collection.objects.link(obj_copy)
-
-def transform_and_save(path,num,obj,angle,location = (30,0,0)):
     
+
+def transform_and_save(path,num,obj,scale,angle,location = (30,0,0)):
+    
+    #transformation
     rot_mat = Matrix.Rotation(radians(angle), 4, 'Z')        
-    trans_mat = Matrix.Translation((30, 0, 0))
+    trans_mat = Matrix.Translation(location)
     mat = trans_mat @ rot_mat
-#    for vert in obj.data.vertices:
-#        vert.co = mat @ vert.co
-
-    obj.matrix_world = obj.matrix_world @ mat
-    save_path_npy = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.npy'.format(num)))
-    save_path_txt = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.txt'.format(num)))
     
-    np.save(save_path_npy,np.array(obj.matrix_world @ mat))
-    np.savetxt(save_path_txt,np.array(obj.matrix_world @ mat))
-        
-        
+    #record vertices
+    vertics = np.zeros((len(obj.data.vertices),3))
+    for i,vert in enumerate(obj.data.vertices):
+#        vert.co = mat @ vert.co
+        vertics[i,:] = vert.co
+#        vertics[i,:] = obj.matrix_world @ vert.co
+
+    obj.matrix_world = obj.matrix_world @ mat    
+    save_path_npy = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.npy'.format(num)))
+#    save_path_txt = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.txt'.format(num)))
+    save_path_npy_vertices = str(path.joinpath('data').joinpath('frame-object-{:06}.vertices.npy'.format(num)))
+    
+    #scale with trans and rot
+    np.save(save_path_npy,np.array(scale @ mat))
+#    np.savetxt(save_path_txt,np.array(obj.matrix_world @ mat))
+    np.save(save_path_npy_vertices,vertics)
+    
+    return mat
+
+def save_object_scale(obj,path):
+    
+    scale_path = str(path.joinpath('data').joinpath('object_scale.npy'))
+    scale = np.array(obj.matrix_world.copy())
+    np.save(scale_path,scale)
+
+
+
+def get_sensor_size(sensor_fit, sensor_x, sensor_y):
+    if sensor_fit == 'VERTICAL':
+        return sensor_y
+    return sensor_x
+
+# BKE_camera_sensor_fit
+def get_sensor_fit(sensor_fit, size_x, size_y):
+    if sensor_fit == 'AUTO':
+        if size_x >= size_y:
+            return 'HORIZONTAL'
+        else:
+            return 'VERTICAL'
+    return sensor_fit
+
+
 
 if __name__ == '__main__':
     
@@ -300,44 +372,60 @@ if __name__ == '__main__':
         os.mkdir('data')
     
     #add custom stl file
-    add_mesh('custom_stl',1,(0,0,0),(0.3,0.3,0.4),all_STL[3])
+    add_mesh('custom_stl',1,(0,0,0),(0.1,0.1,0.1),all_STL[3])
     add_camera(location = (15,0,0),rotation = (0,0,0))
     
     #save intrinsics
     cam = bpy.data.cameras["Camera"]
+    cam = bpy.context.object.data
     save_camera_intrinsics(BASE_DIR,cam)
 
     #selet object
-
     obj = bpy.data.objects['small B']
-    cam_locs = generate_cam_x_y(5,12,center = (5,0,0),num_loc = num_image)
+    cam_locs = generate_cam_x_y(radius = 2,level = 5,center = (1.5,0,0),num_loc = num_image)
     
     #duplicate
     duplicate_obj(obj)
-
-    
-    
+    obj_copy =bpy.data.objects['small B.001']
+    obj_camera = bpy.data.objects["Camera"]
+        
+    scale = obj.matrix_world.copy()
+    save_object_scale(obj,BASE_DIR)
     for num in range(num_image):
         
         #rotate object and save object pose
-        transform_and_save(BASE_DIR,num,obj,angle = 300,location = (30,0,0))
+        angle = np.random.uniform(0,1) * 360
+        mat = transform_and_save(BASE_DIR,num,obj,scale,angle = angle,location = (30,0,0))
+                
         #change camera location
-        obj_camera = bpy.data.objects["Camera"]
+        print(cam_locs[num,:])
         obj_camera.location = cam_locs[num,:]
         bpy.context.view_layer.update()
         
         #make the camera look at the object
-        look_at(obj_camera, mathutils.Vector([5,0,0]))
+        look_at(obj_camera, mathutils.Vector([1.5,0,0]))
 
-        get_pose(BASE_DIR,num) 
-#        #select the camera
-#        
+
+        get_camera_pose(BASE_DIR,num)        
+        RT = get_3x4_RT_matrix_from_blender(obj_camera)
+        print(RT)
+        
+         
+        #select the camera
         bpy.context.scene.camera = bpy.context.object
-        obj = bpy.data.objects['Camera']
+#        obj = bpy.data.objects['Camera']
+        
         
         #save image
-#        save_image(BASE_DIR,rgb = True, depth = True)
-             
+        save_image(BASE_DIR,rgb = True, depth = True)
+        
+        print(obj.matrix_world @ list(obj.data.vertices)[0].co)
+        
+        #reset obj pose
+        Matrix.invert(mat)
+        obj.matrix_world = obj.matrix_world @ mat
+        
+        print(obj.matrix_world @ list(obj.data.vertices)[0].co)
         
         
         
