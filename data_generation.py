@@ -327,6 +327,7 @@ def transform_and_save(path,num,obj,scale,angle,location = (30,0,0)):
     save_path_npy_vertices = str(path.joinpath('data').joinpath('frame-object-{:06}.vertices.npy'.format(num)))
     
     #scale with trans and rot
+#    np.save(save_path_npy,np.array(scale @ mat))
     np.save(save_path_npy,np.array(scale @ mat))
 #    np.savetxt(save_path_txt,np.array(obj.matrix_world @ mat))
     np.save(save_path_npy_vertices,vertics)
@@ -395,8 +396,8 @@ if __name__ == '__main__':
         
         #rotate object and save object pose
         angle = np.random.uniform(0,1) * 360
-        mat = transform_and_save(BASE_DIR,num,obj,scale,angle = angle,location = (30,0,0))
-                
+        mat = transform_and_save(BASE_DIR,num,obj,scale,angle = 90,location = (30,0,0))
+        print('mat',mat)        
         #change camera location
         print(cam_locs[num,:])
         obj_camera.location = cam_locs[num,:]
@@ -406,10 +407,7 @@ if __name__ == '__main__':
         look_at(obj_camera, mathutils.Vector([1.5,0,0]))
 
 
-        get_camera_pose(BASE_DIR,num)        
-        RT = get_3x4_RT_matrix_from_blender(obj_camera)
-        print(RT)
-        
+        get_camera_pose(BASE_DIR,num)                
          
         #select the camera
         bpy.context.scene.camera = bpy.context.object
