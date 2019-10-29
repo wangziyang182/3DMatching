@@ -5,6 +5,7 @@ from Model import TDDD_Net
 from Data import dataset
 from Config import config
 import pathlib as PH
+from Data import dataset
 
 # flags = tf.app.flags
 # FLAGS = flags.FLAGS
@@ -18,15 +19,14 @@ import pathlib as PH
 # flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data '
 #                  'for unit testing.')
 
-
-current_path = PH.Path(__file__).parent
-data_path = current_path.joinpath('data')
-tsdf_volume_list = [str(tsdf_volume) for tsdf_volume in data_path.glob('**/*voxel*.npy')]
-correspondence_list = [str(correspondence) for correspondence in data_path.glob('**/*correspondence*.npy')]
-
+#load data_set
+data = dataset()
 steps = 1
-
 Model = TDDD_Net(config)
+
+
+
+
 for i in range(steps):
 
     #load correspondence and tsdf_volume

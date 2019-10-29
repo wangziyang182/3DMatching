@@ -1,5 +1,8 @@
 import numpy as np
 from skimage import measure
+import time
+
+
 try:
     import pycuda.driver as cuda
     import pycuda.autoinit
@@ -16,19 +19,22 @@ class TSDFVolume(object):
     def __init__(self,vol_bnds,voxel_size):
 
         # Define voxel volume parameters
-        self._vol_bnds = vol_bnds # rows: x,y,z columns: min,max in world coordinates in meters
-        self._voxel_size = voxel_size # in meters (determines volume discretization and resolution)
-        self._trunc_margin = self._voxel_size*5 # truncation on SDF
+        # rows: x,y,z columns: min,max in world coordinates in meters
+        self._vol_bnds = vol_bnds 
+        # in meters (determines volume discretization and resolution)
+        self._voxel_size = voxel_size 
+        # truncation on SDF
+        self._trunc_margin = self._voxel_size*5 
 
         # Adjust volume bounds
         self._vol_dim = np.ceil((self._vol_bnds[:,1]-self._vol_bnds[:,0])/self._voxel_size).copy(order='C').astype(int) # ensure C-order contigous
         self._vol_bnds[:,1] = self._vol_bnds[:,0]+self._vol_dim*self._voxel_size
-        self._vol_origin = self._vol_bnds[:,0].copy(order='C').astype(np.float32) # ensure C-order contigous
+        self._vol_lower_bounds = self._vol_bnds[:,0].copy(order='C').astype(np.float32)
+
         print("Voxel volume size: %d x %d x %d"%(self._vol_dim[0],self._vol_dim[1],self._vol_dim[2]))
 
-        # Initialize pointers to voxel volume in CPU memory
         self._tsdf_vol_cpu = np.ones(self._vol_dim).astype(np.float32)
-        self._weight_vol_cpu = np.zeros(self._vol_dim).astype(np.float32) # for computing the cumulative moving average of observations per voxel
+        self._weight_vol_cpu = np.zeros(self._vol_dim).astype(np.float32) 
         self._color_vol_cpu = np.zeros(self._vol_dim).astype(np.float32)
 
         # Copy voxel volumes to GPU
@@ -141,32 +147,6 @@ class TSDFVolume(object):
             self._n_gpu_loops = int(np.ceil(float(np.prod(self._vol_dim))/float(np.prod(self._max_gpu_grid_dim)*self._max_gpu_threads_per_block)))
 
 
-    # (Deprecated) Expand voxel volume to encompass new bounds
-    # def expand(self,new_bnds):
-    #     for dim in range(3):
-    #         if new_bnds[dim,0] < self._vol_bnds[dim,0]: # expand lower bounds
-    #             n_voxels_expand = int(np.ceil((self._vol_bnds[dim,0]-new_bnds[dim,0])/self._voxel_size))
-    #             new_chunk_size = np.round((self._vol_bnds[:,1]-self._vol_bnds[:,0])/self._voxel_size).astype(int)
-    #             new_chunk_size[dim] = n_voxels_expand # size of expanding region (i.e. chunk)
-
-    #             # Initialize chunks and concatenate to current voxel volume
-    #             self._tsdf_vol_cpu = np.concatenate((np.ones(new_chunk_size),self._tsdf_vol_cpu),axis=dim)
-    #             self._weight_vol_cpu = np.concatenate((np.zeros(new_chunk_size),self._weight_vol_cpu),axis=dim)
-    #             self._color_vol_cpu = np.concatenate((np.zeros(new_chunk_size),self._color_vol_cpu),axis=dim)
-    #             self._vol_bnds[dim,0] -= n_voxels_expand*self._voxel_size # update voxel volume bounds
-
-    #         if new_bnds[dim,1] > self._vol_bnds[dim,1]: # expand upper bounds
-    #             n_voxels_expand = int(np.ceil((new_bnds[dim,1]-self._vol_bnds[dim,1])/self._voxel_size))
-    #             new_chunk_size = np.round((self._vol_bnds[:,1]-self._vol_bnds[:,0])/self._voxel_size).astype(int)
-    #             new_chunk_size[dim] = n_voxels_expand # size of expanding region (i.e. chunk)
-                
-    #             # Initialize chunks and concatenate to current voxel volume
-    #             self._tsdf_vol_cpu = np.concatenate((self._tsdf_vol_cpu,np.ones(new_chunk_size)),axis=dim)
-    #             self._weight_vol_cpu = np.concatenate((self._weight_vol_cpu,np.zeros(new_chunk_size)),axis=dim)
-    #             self._color_vol_cpu = np.concatenate((self._color_vol_cpu,np.zeros(new_chunk_size)),axis=dim)
-    #             self._vol_bnds[dim,1] += n_voxels_expand*self._voxel_size # update voxel volume bounds
-
-
     def integrate(self,color_im,depth_im,cam_intr,cam_pose,obs_weight=1.):
         im_h = depth_im.shape[0]
         im_w = depth_im.shape[1]
@@ -197,8 +177,27 @@ class TSDFVolume(object):
             xv,yv,zv = np.meshgrid(range(self._vol_dim[0]),range(self._vol_dim[1]),range(self._vol_dim[2]),indexing='ij')
             vox_coords = np.concatenate((xv.reshape(1,-1),yv.reshape(1,-1),zv.reshape(1,-1)),axis=0).astype(int)
 
+
             # Voxel coordinates to world coordinates
-            world_pts = self._vol_origin.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
+            # world_pts = self._vol_lower_bounds.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
+
+            # # World coordinates to camera coordinates
+            # world2cam = np.linalg.inv(cam_pose)
+
+            # ### delete later
+            # cam_pts = np.dot(world2cam[:3,:3],world_pts)+np.tile(world2cam[:3,3].reshape(3,1),(1,world_pts.shape[1]))
+
+            # world_pts_homo = np.concatenate([world_pts,np.ones((1,world_pts.shape[1]))],axis = 0)
+
+            # cam_pts = (world2cam @ world_pts_homo)[:3,:]
+
+            # pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
+
+            # pix_x = pix[0,:]
+            # pix_y = pix[1,:]
+            
+
+            world_pts = self._vol_lower_bounds.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
 
             # World coordinates to camera coordinates
             world2cam = np.linalg.inv(cam_pose)
@@ -207,19 +206,23 @@ class TSDFVolume(object):
             # Camera coordinates to image pixels
             pix_x = np.round(cam_intr[0,0]*(cam_pts[0,:]/cam_pts[2,:])+cam_intr[0,2]).astype(int)
             pix_y = np.round(cam_intr[1,1]*(cam_pts[1,:]/cam_pts[2,:])+cam_intr[1,2]).astype(int)
-            
+
             # Skip if outside view frustum
             valid_pix = np.logical_and(pix_x >= 0,
                         np.logical_and(pix_x < im_w,
                         np.logical_and(pix_y >= 0,
                         np.logical_and(pix_y < im_h,
-                                       cam_pts[2,:] > 0))))
+                                       cam_pts[2,:] < 0))))
+
+            print('valid_pix',np.sum(valid_pix))
 
             depth_val = np.zeros(pix_x.shape)
             depth_val[valid_pix] = depth_im[pix_y[valid_pix],pix_x[valid_pix]]
 
             # Integrate TSDF
             depth_diff = depth_val-cam_pts[2,:]
+
+            
             valid_pts = np.logical_and(depth_val > 0,depth_diff >= -self._trunc_margin)
             dist = np.minimum(1.,np.divide(depth_diff,self._trunc_margin))
             w_old = self._weight_vol_cpu[vox_coords[0,valid_pts],vox_coords[1,valid_pts],vox_coords[2,valid_pts]]
@@ -270,10 +273,6 @@ class TSDFVolume(object):
         return verts,faces,norms,colors
 
 
-# -------------------------------------------------------------------------------
-# Additional helper functions
-
-
 # Get corners of 3D camera view frustum of depth image
 def get_view_frustum(depth_im,cam_intr,cam_pose):
     im_h = depth_im.shape[0]
@@ -316,3 +315,46 @@ def meshwrite(filename,verts,faces,norms,colors):
         ply_file.write("3 %d %d %d\n"%(faces[i,0],faces[i,1],faces[i,2]))
 
     ply_file.close()
+
+def draw_points(path,cam_pose,cam_intr,vertices,obj_scale):
+
+    # World coordinates to camera coordinates
+    world2cam = np.linalg.inv(cam_pose)
+    # print(world2cam[:3,:])
+    # print(vertices.shape)
+    # print(cam_pose)
+    # print(cam_intr)
+
+    world_pts_homo = np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1)
+
+    cam_pts = (world2cam @ world_pts_homo.T)[:3,:]
+
+    pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
+
+    pix = pix.T
+
+
+    # K = cam_intr @ world2cam[:3,:]
+    # vertices_homo = np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1)
+    # pix = (K @ vertices_homo.T).T
+    # pix = np.round(pix[:,:2] / pix[:,2:3]).astype('int')
+
+    img = cv2.imread(str(path),cv2.IMREAD_COLOR)
+    for item in pix:
+        cv2.circle(img,(item[0],item[1]), 1, (0,255,0), -1)
+    cv2.imshow('img',img)
+    cv2.waitKey(0)
+
+def find_vertices_correspondence(scale,object_pose,vertices):
+    object_pose = np.linalg.inv(scale) @ object_pose
+    scale = np.array([scale[0][0],scale[1][1],scale[2][2]])[...,None]
+    object_pose[:3,3:4] = object_pose[:3,3:4] * scale
+    y = object_pose @ np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1).T
+    return y.T[:,:3]
+
+def world_to_voxel(voxel_size,vertices,bounds):
+    voxel = np.round(vertices/ voxel_size)
+    voxel[:,:1] = voxel[:,:1] + np.round((-bounds[0] / voxel_size)).astype(int)
+    voxel[:,1:2] = voxel[:,1:2] +np.round((-bounds[1] / voxel_size)).astype(int)
+    voxel[:,2:3] = voxel[:,2:3] +np.round((-bounds[2] / voxel_size)).astype(int)
+    return voxel

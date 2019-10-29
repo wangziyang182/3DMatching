@@ -1,126 +1,70 @@
 import numpy as np
+import pathlib as PH
 
 class dataset(object):
 
-    def __init__(self,config):
-        self._x_train_item = None
-        self._x_train_package = None
-
-        self._y_train_item_match = None
-        self._y_train_package_match = None
-        self._y_train_item_non_match = None
-        self._y_train_package_non_match = None
-
-        self._config = config
-
-
-    def generate_data(self):
-        batch_size = self.config.batch_size
-        batch_match = self.config.batch_match
-        batch_non_match = self.config.batch_non_match
-
-        self.x_train_item = np.random.normal(0,1,[batch_size,30,30,30,1])
-        self.x_train_package = np.random.normal(0,1,[batch_size,30,30,30,1])
-
-        for i in range(batch_size):
-            idx_item = np.random.choice(30,batch_match + batch_non_match,replace= False)
-            idy_item = np.random.choice(30,batch_match + batch_non_match,replace= False)
-            idz_item = np.random.choice(30,batch_match + batch_non_match,replace= False)
-
-            idx_package = np.random.choice(30,batch_match + batch_non_match,replace= False)
-            idy_package = np.random.choice(30,batch_match + batch_non_match,replace= False)
-            idz_package = np.random.choice(30,batch_match + batch_non_match,replace= False)
-
-            try:
-                ele_match = np.stack((idx_item,idy_item,idz_item),axis = -1)[:batch_match,:][None,...]
-                ele_non_match = np.stack((idx_item,idy_item,idz_item),axis = -1)[-batch_non_match:,:][None,...]
-                self.y_train_item_match = np.concatenate((self.y_train_item_match,ele_match),axis = 0)
-                self.y_train_item_non_match = np.concatenate((self.y_train_item_non_match,ele_non_match),axis = 0)
-
-                ele_match = np.stack((idx_package,idy_package,idz_package),axis = -1)[:batch_match,:][None,...]
-                ele_non_match = np.stack((idx_package,idy_package,idz_package),axis = -1)[-batch_non_match:,:][None,...]
-                
-                self.y_train_package_match = np.concatenate((self.y_train_package_match,ele_match),axis = 0)
-
-                self.y_train_package_non_match = np.concatenate((self.y_train_package_non_match,ele_non_match),axis = 0)
+    def __init__(self):
+        current_path = PH.Path(__file__).parent
+        data_path = current_path.joinpath('data')
+        
+        self._tsdf_volume_list = tsdf_volume_list = [str(tsdf_volume) for tsdf_volume in data_path.glob('**/*voxel*.npy')]
+        self._correspondence_list = correspondence_list = [str(correspondence) for correspondence in data_path.glob('**/*correspondence*.npy')]
+        self.data_size = len(self._tsdf_volume_list)
+        self._pointer_start = 0
+        self._pointer_end = 0
+        # self._config = config
 
 
-            except:
-                self.y_train_item_match = np.stack((idx_item,idy_item,idz_item),axis = -1)[:batch_match,:][None,...]
-                self.y_train_item_non_match =  np.stack((idx_item,idy_item,idz_item),axis = -1)[-batch_non_match:,:][None,...]
 
-                self.y_train_package_match = np.stack((idx_package,idy_package,idz_package),axis = -1)[:batch_match,:][None,...]
-                self.y_train_package_non_match =  np.stack((idx_package,idy_package,idz_package),axis = -1)[-batch_non_match:,:][None,...]
+    def generate_data(self,batch_size = 1):
+        #update pointer
+        if batch_size == 0:
+            raise Exception('batch_size need to be greater than 0')
+        if batch_size > self.data_size:
+            raise Exception('batch_size cannot be greater than total number of data')
+
+        self._pointer_end += batch_size
+        self._pointer_start = self._pointer_end - batch_size
+
+        if self._pointer_end >= self.data_size:
+            self._pointer_end = self.data_size
+        volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+
+        correspondence = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+        if self._pointer_end >= self.data_size:
+            self._pointer_end = 0
+
+        return volume,correspondence
+
+
+
 
 
     @property
-    def x_train_item(self):
-        return self._x_train_item
+    def tsdf_volume_list(self):
+        return self._tsdf_volume_list
 
     @property
-    def x_train_package(self):
-        return self._x_train_package
+    def correspondence_list(self):
+        return self._correspondence_list
 
     @property
-    def y_train_item_match(self):
-        return self._y_train_item_match
+    def pointer_start(self):
+        return self._pointer_start
 
     @property
-    def y_train_package_match(self):
-        return self._y_train_package_match
+    def pointer_end(self):
+        return self._pointer_end
 
-    @property
-    def y_train_item_non_match(self):
-        return self._y_train_item_non_match
-
-    @property
-    def y_train_package_non_match(self):
-        return self._y_train_package_non_match
-
-    @property
-    def config(self):
-        return self._config
-
-
-    @x_train_item.setter
-    def x_train_item(self,value):
-        self._x_train_item = value
-
-    @x_train_package.setter
-    def x_train_package(self,value):
-        self._x_train_package = value
-
-    @y_train_item_match.setter
-    def y_train_item_match(self,value):
-        self._y_train_item_match = value
-
-    @y_train_package_match.setter
-    def y_train_package_match(self,value):
-        self._y_train_package_match = value
-
-    @y_train_item_non_match.setter
-    def y_train_item_non_match(self,value):
-        self._y_train_item_non_match = value
-
-    @y_train_package_non_match.setter
-    def y_train_package_non_match(self,value):
-        self._y_train_package_non_match = value
-
-    @config.setter
-    def config(self,value):
-        self._config = value
-
-    # @x_train.setter
-    # def x_train(self,value):
-    #     self._x_train = value
-
-    # @y_train.setter
-    # def y_train(self,value):
-    #     self._y_train = value
-
-    # @config.setter
-    # def config(self,value):
-    #     self._config = value
+    @tsdf_volume_list.setter
+    def tsdf_volume_list(self,value):
+        self._tsdf_volume_list = value
+   
 
 
 
+if __name__ == '__main__':
+    data = dataset()
+    # print(data.tsdf_volume_list)
+    x,y = data.generate_data(10)
+    x,y = data.generate_data(1)

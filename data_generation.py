@@ -360,7 +360,7 @@ def get_sensor_fit(sensor_fit, size_x, size_y):
 
 if __name__ == '__main__':
     
-    num_image = 1
+    num_image = 10
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
     

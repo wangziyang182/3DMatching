@@ -73,55 +73,6 @@ class TDDD_Net(tf.keras.Model):
         return tensor
         
 
-    def compute_loss(self,x_train_item,x_train_package,y_train_item_match,y_train_item_non_match,y_train_package_match,y_train_package_non_match):
-        '''
-        Simason Fashion Training
-
-        '''
-        x_train_item_descriptor = self.call(x_train_item)
-        x_train_package_descriptor = self.call(x_train_package)
-
-        print(x_train_item_descriptor.shape)
-        print(x_train_package_descriptor.shape)
-        print(y_train_item_match.shape)
-
-        for i in range(self.config.batch_size):
-
-            try:
-                ele_item_match = tf.stack([x_train_item_descriptor[i,y_train_item_match[i,j,0],y_train_item_match[i,j,1],y_train_item_match[i,j,2],:] for j in range(y_train_item_match.shape[1])],axis = 0)[None,...]
-
-                ele_item_non_match = tf.stack([x_train_item_descriptor[i,y_train_item_non_match[i,j,0],y_train_item_non_match[i,j,1],y_train_item_non_match[i,j,2],:] for j in range(y_train_item_non_match.shape[1])],axis = 0)[None,...]
-
-                ele_package_match = tf.stack([x_train_package_descriptor[i,y_train_package_match[i,j,0],y_train_package_match[i,j,1],y_train_package_match[i,j,2],:] for j in range(y_train_package_match.shape[1])],axis = 0)[None,...]
-
-                ele_package_non_match = tf.stack([x_train_package_descriptor[i,y_train_package_non_match[i,j,0],y_train_package_non_match[i,j,1],y_train_package_non_match[i,j,2],:] for j in range(y_train_package_non_match.shape[1])],axis = 0)[None,...]
-
-                # print(ele_item_match)
-                # print(ele_item_non_match)
-                # print(ele_package_match)
-                # print(ele_package_non_match)
-
-                item_match = tf.concat((item_match,ele_item_match),axis =0)
-                item_non_match = tf.concat((item_non_match,ele_item_non_match),axis = 0)
-                package_match = tf.concat((package_match,ele_package_match),axis = 0)
-                package_non_match = tf.concat((package_non_match,ele_package_non_match),axis = 0)
-                # print(ele_item_match.shape)
-            except:
-                item_match = tf.stack([x_train_item_descriptor[i,y_train_item_match[i,j,0],y_train_item_match[i,j,1],y_train_item_match[i,j,2],:] for j in range(y_train_item_match.shape[1])],axis = 0)[None,...]
-
-                item_non_match = tf.stack([x_train_item_descriptor[i,y_train_item_non_match[i,j,0],y_train_item_non_match[i,j,1],y_train_item_non_match[i,j,2],:] for j in range(y_train_item_non_match.shape[1])],axis = 0)[None,...]
-
-                package_match = tf.stack([x_train_package_descriptor[i,y_train_package_match[i,j,0],y_train_package_match[i,j,1],y_train_package_match[i,j,2],:] for j in range(y_train_package_match.shape[1])],axis = 0)[None,...]
-
-                package_non_match = tf.stack([x_train_package_descriptor[i,y_train_package_non_match[i,j,0],y_train_package_non_match[i,j,1],y_train_package_non_match[i,j,2],:] for j in range(y_train_package_non_match.shape[1])],axis = 0)[None,...]
-        print(item_match.shape,item_non_match.shape,package_match.shape,package_non_match.shape)
-
-        l2_match = tf.reduce_mean(tf.reduce_mean(tf.math.sqrt(tf.reduce_sum((item_match - package_match) ** 2,axis = -1))))
-        l2_non_match = tf.reduce_mean(tf.reduce_mean(tf.math.sqrt(tf.reduce_sum((item_non_match - package_non_match) ** 2,axis = -1))))
-
-        print(l2_match.numpy())
-        print(l2_non_match.numpy())
-
     @tf.function
     def train(self,tsdf_volume,match,non_match = None):
         with tf.GradientTape() as tape:
