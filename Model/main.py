@@ -19,56 +19,17 @@ from Data import dataset
 # flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data '
 #                  'for unit testing.')
 
+
 #load data_set
 data = dataset()
 steps = 1
 Model = TDDD_Net(config)
 
-
-
-
 for i in range(steps):
 
     #load correspondence and tsdf_volume
-    correspondence = np.load(correspondence_list[i]).astype('int')
-    tsdf_volume = np.load(tsdf_volume_list[i])[None,...,None]
-    Model.train(tsdf_volume,correspondence,non_match = None)
+    tsdf_volume_batch,correspondence_batch = data.generate_data(2)
+    Model.train(tsdf_volume_batch,correspondence_batch,non_match = None)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# config = config()
-# data = dataset(config)
-# data.generate_data()
-
-# # print(data.x_train_item.shape)
-# # print(data.x_train_package.shape)
-# # print(data.y_train_match.shape)
-
-
-# ddd_Net = TDDD_Net(config)
-
-# ddd_Net.compute_loss(data.x_train_item,data.x_train_package,data.y_train_item_match,data.y_train_item_non_match,data.y_train_package_match,data.y_train_package_non_match)
-
-
-
-# # print(ddd_Net.config)
-# # ddd_Net.config = 10
-# # print(ddd_Net.config)
 

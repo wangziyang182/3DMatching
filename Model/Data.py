@@ -28,7 +28,7 @@ class dataset(object):
 
         if self._pointer_end >= self.data_size:
             self._pointer_end = self.data_size
-        volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+        volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list[self._pointer_start:self._pointer_end]],axis = 0)
 
         correspondence = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
         if self._pointer_end >= self.data_size:
@@ -66,5 +66,5 @@ class dataset(object):
 if __name__ == '__main__':
     data = dataset()
     # print(data.tsdf_volume_list)
-    x,y = data.generate_data(10)
+    x,y = data.generate_data()
     x,y = data.generate_data(1)
