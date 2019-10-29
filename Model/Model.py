@@ -8,6 +8,7 @@ class TDDD_Net(tf.keras.Model):
         super(TDDD_Net,self).__init__()
         
         self._config = config
+        self.optimizer = tf.keras.optimizers.Adam()
 
         with tf.name_scope("Layer_1") as scope:
             self.conv_3d_l1 = tf.keras.layers.Conv3D(filters = 32, kernel_size = [3,3,2], strides = [1,1,1], padding = 'same',activation='relu')
@@ -18,11 +19,11 @@ class TDDD_Net(tf.keras.Model):
             self.batch_l2 = tf.keras.layers.BatchNormalization()
         
         with tf.name_scope("Layer_3") as scope:
-            self.conv_3d_l3 = tf.keras.layers.Conv3D(filters = 64,kernel_size = [5,5,5],strides = [1,1,1],padding = 'valid',activation = 'relu')
+            self.conv_3d_l3 = tf.keras.layers.Conv3D(filters = 64,kernel_size = [5,5,3],strides = [1,1,1],padding = 'valid',activation = 'relu')
             self.batch_l3 = tf.keras.layers.BatchNormalization()
         
         with tf.name_scope("Layer_4") as scope:
-            self.conv_3d_l4 = tf.keras.layers.Conv3D(filters = 64,kernel_size = [5,5,5],strides = [1,1,1],padding = 'valid',activation = 'relu')
+            self.conv_3d_l4 = tf.keras.layers.Conv3D(filters = 64,kernel_size = [5,5,3],strides = [1,1,1],padding = 'valid',activation = 'relu')
             self.batch_l4 = tf.keras.layers.BatchNormalization()
             self.pool_3d_l4 = tf.keras.layers.AveragePooling3D()
 
@@ -34,7 +35,7 @@ class TDDD_Net(tf.keras.Model):
             self.conv_3d_l6 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [3,3,2],strides = [1,1,1],data_format = "channels_last")
 
         with tf.name_scope("Layer_7") as scope:
-            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,5],strides = [1,1,1],data_format = "channels_last")
+            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,4],strides = [1,1,1],data_format = "channels_last")
 
 
     def call(self,input_tensor):
@@ -55,7 +56,6 @@ class TDDD_Net(tf.keras.Model):
         print('layer_4')
         tensor = self.conv_3d_l4(tensor)
         tensor = self.batch_l4(tensor)
-        print(tensor)
         tensor = self.pool_3d_l4(tensor)
 
         print('layer_5')
@@ -122,18 +122,20 @@ class TDDD_Net(tf.keras.Model):
         print(l2_match.numpy())
         print(l2_non_match.numpy())
 
+    @tf.function
+    def train(self,tsdf_volume,match,non_match = None):
+        with tf.GradientTape() as tape:
+            voxel_descriptor = self.call(tsdf_volume)
+            descriptor_a = tf.gather_nd(voxel_descriptor[0,:], match[:,:3])
+            descriptor_b =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
+            match_loss = tf.reduce_mean(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 1))
 
-    def compute_loss(self,tensor,match,non_match = None):
+            #need implement
+            non_match_loss = 0
+            loss = match_loss + non_match_loss
 
-        descriptor_a = tf.gather_nd(tensor[0,:], match[:,:3])
-        descriptor_b =  tf.gather_nd(tensor[0,:], match[:,3:6])
-        match_loss = tf.reduce_mean(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 1))
-
-        #need implement
-        non_match_loss = 0
-
-        print(match_loss)
-
+        gradients = tape.gradient(loss,self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
 
     @property
@@ -147,20 +149,4 @@ class TDDD_Net(tf.keras.Model):
     #     else:
     #         print('please use a dict')
 
-if __name__ == '__main__':
-    import pathlib as PH
-    print(tf.__version__)
 
-    current_path = PH.Path(__file__).parent
-    data_path = current_path.joinpath('data')
-    x = [str(x) for x in data_path.glob('**/*voxel*.npy')]
-    y = [str(y) for y in data_path.glob('**/*correspondence*.npy')]
-
-    steps = 1
-
-    Model = TDDD_Net(config)
-    for i in range(steps):
-        voxel_descriptor = Model(np.load(x[i])[None,...,None])
-        print(voxel_descriptor)
-        correspondence = np.load(y[0]).astype('int')
-        Model.compute_loss(voxel_descriptor,correspondence,non_match = None)
