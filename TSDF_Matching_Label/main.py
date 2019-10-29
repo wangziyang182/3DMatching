@@ -183,30 +183,43 @@ class TSDFVolume(object):
 
 
             # Voxel coordinates to world coordinates
+            # world_pts = self._vol_lower_bounds.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
+
+            # # World coordinates to camera coordinates
+            # world2cam = np.linalg.inv(cam_pose)
+
+            # ### delete later
+            # cam_pts = np.dot(world2cam[:3,:3],world_pts)+np.tile(world2cam[:3,3].reshape(3,1),(1,world_pts.shape[1]))
+
+            # world_pts_homo = np.concatenate([world_pts,np.ones((1,world_pts.shape[1]))],axis = 0)
+
+            # cam_pts = (world2cam @ world_pts_homo)[:3,:]
+
+            # pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
+
+            # pix_x = pix[0,:]
+            # pix_y = pix[1,:]
+            
+
             world_pts = self._vol_lower_bounds.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
 
             # World coordinates to camera coordinates
             world2cam = np.linalg.inv(cam_pose)
-
-            ### delete later
             cam_pts = np.dot(world2cam[:3,:3],world_pts)+np.tile(world2cam[:3,3].reshape(3,1),(1,world_pts.shape[1]))
 
-            world_pts_homo = np.concatenate([world_pts,np.ones((1,world_pts.shape[1]))],axis = 0)
+            # Camera coordinates to image pixels
+            pix_x = np.round(cam_intr[0,0]*(cam_pts[0,:]/cam_pts[2,:])+cam_intr[0,2]).astype(int)
+            pix_y = np.round(cam_intr[1,1]*(cam_pts[1,:]/cam_pts[2,:])+cam_intr[1,2]).astype(int)
 
-            cam_pts = (world2cam @ world_pts_homo)[:3,:]
-
-            pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
-
-            pix_x = pix[0,:]
-            pix_y = pix[1,:]
-            
+            print('cam_pts',pix_x)
+            print('cam_pts',pix_y)
 
             # Skip if outside view frustum
             valid_pix = np.logical_and(pix_x >= 0,
                         np.logical_and(pix_x < im_w,
                         np.logical_and(pix_y >= 0,
                         np.logical_and(pix_y < im_h,
-                                       cam_pts[2,:] > 0))))
+                                       cam_pts[2,:] < 0))))
 
             print('valid_pix',np.sum(valid_pix))
 
@@ -215,6 +228,9 @@ class TSDFVolume(object):
 
             # Integrate TSDF
             depth_diff = depth_val-cam_pts[2,:]
+
+            print(cam_pts)
+
             valid_pts = np.logical_and(depth_val > 0,depth_diff >= -self._trunc_margin)
             dist = np.minimum(1.,np.divide(depth_diff,self._trunc_margin))
             w_old = self._weight_vol_cpu[vox_coords[0,valid_pts],vox_coords[1,valid_pts],vox_coords[2,valid_pts]]
@@ -248,12 +264,20 @@ def get_view_frustum(depth_im,cam_intr,cam_pose):
     return view_frust_pts
 
 def find_vertices_correspondence(scale,object_pose,vertices):
+    object_pose = np.linalg.inv(scale) @ object_pose
+    scale = np.array([scale[0][0],scale[1][1],scale[2][2]])[...,None]
+    object_pose[:3,3:4] = object_pose[:3,3:4] * scale
     y = object_pose @ np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1).T
-
     return y.T[:,:3]
 
-def world_to_voxel(voxel_size,world_pts):
-    return np.round(world_pts / voxel_size)
+def world_to_voxel(voxel_size,vertices,bounds):
+    print(bounds)
+    voxel = np.round(vertices/ voxel_size)
+    voxel[:,:1] = voxel[:,:1] + np.round((-bounds[0] / voxel_size)).astype(int)
+    voxel[:,1:2] = voxel[:,1:2] +np.round((-bounds[1] / voxel_size)).astype(int)
+    voxel[:,2:3] = voxel[:,2:3] +np.round((-bounds[2] / voxel_size)).astype(int)
+    return voxel
+
 
 def draw_points(path,cam_pose,cam_intr,vertices,obj_scale):
 
@@ -263,12 +287,9 @@ def draw_points(path,cam_pose,cam_intr,vertices,obj_scale):
     # print(vertices.shape)
     # print(cam_pose)
     # print(cam_intr)
-    vertices = (obj_scale[:3,:3] @ vertices.T).T
 
-    print(vertices.shape)
     world_pts_homo = np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1)
 
-    print(world_pts_homo)
     cam_pts = (world2cam @ world_pts_homo.T)[:3,:]
 
     pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
@@ -283,28 +304,9 @@ def draw_points(path,cam_pose,cam_intr,vertices,obj_scale):
 
     img = cv2.imread(str(path),cv2.IMREAD_COLOR)
     for item in pix:
-        print(item)
         cv2.circle(img,(item[0],item[1]), 1, (0,255,0), -1)
     cv2.imshow('img',img)
     cv2.waitKey(0)
-
-    # print(vertices_homo.shape)
-
-
-
-
-
-
-    # print(vertices_homo.shape)
-    # cam_pts = (world2cam @ vertices_homo.T)[:3,:]
-
-    # pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
-    
-    # print(pix)
-    # print(key_pts.shape)
-
-
-
 
 
 
@@ -314,24 +316,25 @@ if __name__ == '__main__':
 
 
     #def nounds metric standard(meter)
-    vol_bnds = np.array([[-1,4.5],[-1.6,1.6],[0,0.6]])
-    voxel_size = 0.025
+    vol_bnds = np.array([[-1,5],[-2,2],[0,1]])
+    voxel_size = 0.1
     #set base dir
     BASE_DIR = PH.Path(__file__).parent.parent
     WORKING_DIR = BASE_DIR.joinpath('data')
-
+    MODEL_DIR = BASE_DIR.joinpath('Model')
+    MODEL_DATA_DIR = MODEL_DIR.joinpath('data')
     #get camera intrinsics, obj_scale
     cam_intr = np.load(WORKING_DIR.joinpath('camera-intrinsics.npy'))
     obj_scale = np.load(WORKING_DIR.joinpath('object_scale.npy'))
 
 
     #TSDF fusion class
-    tsdf_vol = TSDFVolume(vol_bnds,voxel_size=voxel_size)
 
     #num of images need to be fused
     n_imgs = 1
     
     for i in range(n_imgs):
+        tsdf_vol = TSDFVolume(vol_bnds,voxel_size=voxel_size)
         color_image_path = WORKING_DIR.joinpath('frame-{number:06}.color.png'.format(number = i))
         depth_image_path = WORKING_DIR.joinpath('frame-{number:06}.depth.png'.format(number = i))
         camera_pose = WORKING_DIR.joinpath('frame-camera-{number:06}.pose.npy'.format(number = i))
@@ -341,21 +344,42 @@ if __name__ == '__main__':
 
         color_image = plt.imread(str(color_image_path),-1)
         depth_im = cv2.imread(str(depth_image_path),-1)
+        depth_im = plt.imread(str(depth_image_path))
         cam_pose = np.load(str(camera_pose))
         obj_pose = np.load(str(object_pose))
         vertices_x =  np.load(str(vertices))
-        # vertices = (obj_scale[:3,:3] @ np.load(str(vertices)).T).T
+        vertices_x = (obj_scale[:3,:3] @ np.load(str(vertices)).T).T
+        # print(vertices_x[:3,:])
+
+        print(depth_im.max())
+        print(depth_im.min())
 
         # homo = np.ones((1,1))
         # homo_coor = np.concatenate([vertices[:1,:],homo],axis = 1)
         tsdf_vol.integrate(color_image,depth_im,cam_intr,cam_pose,obs_weight=1.)
 
         vertices_y = find_vertices_correspondence(obj_scale,obj_pose,vertices_x)
-        voxel_x = world_to_voxel(voxel_size,vertices_x)
-        voxel_y = world_to_voxel(voxel_size,vertices_y)
-        
+
+        # print(vertices_y[:3,:][0])
+        voxel_x = world_to_voxel(voxel_size,vertices_x,tsdf_vol._vol_lower_bounds)
+        voxel_y = world_to_voxel(voxel_size,vertices_y,tsdf_vol._vol_lower_bounds)
+
+        # print(voxel_x)
+        # print(voxel_y)
+
+        tsdf_vol._tsdf_vol_cpu
+
+        if not os.path.exists(str(MODEL_DATA_DIR)):
+            os.mkdir(MODEL_DATA_DIR)
+
+        train_test_data_path = MODEL_DATA_DIR.joinpath('train_test_voxel-{number:06}.npy'.format(number = i))
+        train_test_correspondence_path = MODEL_DATA_DIR.joinpath('train_test_correspondence-{number:06}.npy'.format(number = i))
+        np.save(train_test_data_path,tsdf_vol._tsdf_vol_cpu)
+        np.save(train_test_correspondence_path,np.concatenate([voxel_x,voxel_y],axis = 1))
+
+
         # draw_points(color_image_path,tsdf_vol._pix)
-        draw_points(color_image_path,cam_pose,cam_intr,vertices_x,obj_scale)
+        # draw_points(color_image_path,cam_pose,cam_intr,vertices_x,obj_scale)
         # tsdf_vol.find_voxel_correspondence(cam_intr,cam_pose,keypts)
 
 

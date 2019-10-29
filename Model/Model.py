@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from Config import config
 
 class TDDD_Net(tf.keras.Model):
   
@@ -9,52 +10,62 @@ class TDDD_Net(tf.keras.Model):
         self._config = config
 
         with tf.name_scope("Layer_1") as scope:
-            self.conv_3d_l1 = tf.keras.layers.Conv3D(filters = 32, kernel_size = [3,3,3], strides = [1,1,1], padding = 'same',activation='relu')
+            self.conv_3d_l1 = tf.keras.layers.Conv3D(filters = 32, kernel_size = [3,3,2], strides = [1,1,1], padding = 'same',activation='relu')
             self.batch_l1 = tf.keras.layers.BatchNormalization()
         
         with tf.name_scope("Layer_2") as scope:
-            self.conv_3d_l2 = tf.keras.layers.Conv3D(filters = 64, kernel_size = [3,3,3],strides = [1,1,1],padding = 'valid',activation = 'relu')
+            self.conv_3d_l2 = tf.keras.layers.Conv3D(filters = 32, kernel_size = [3,3,2],strides = [1,1,1],padding = 'valid',activation = 'relu')
             self.batch_l2 = tf.keras.layers.BatchNormalization()
         
         with tf.name_scope("Layer_3") as scope:
-            self.conv_3d_l3 = tf.keras.layers.Conv3D(filters = 128,kernel_size = [5,5,5],strides = [1,1,1],padding = 'valid',activation = 'relu')
+            self.conv_3d_l3 = tf.keras.layers.Conv3D(filters = 64,kernel_size = [5,5,5],strides = [1,1,1],padding = 'valid',activation = 'relu')
             self.batch_l3 = tf.keras.layers.BatchNormalization()
         
         with tf.name_scope("Layer_4") as scope:
-            self.conv_3d_l4 = tf.keras.layers.Conv3D(filters = 256,kernel_size = [5,5,5],strides = [1,1,1],padding = 'valid',activation = 'relu')
+            self.conv_3d_l4 = tf.keras.layers.Conv3D(filters = 64,kernel_size = [5,5,5],strides = [1,1,1],padding = 'valid',activation = 'relu')
             self.batch_l4 = tf.keras.layers.BatchNormalization()
             self.pool_3d_l4 = tf.keras.layers.AveragePooling3D()
 
         with tf.name_scope("Layer_5") as scope:
-            self.conv_3d_l5 = tf.keras.layers.Conv3DTranspose(filters = 256,kernel_size=[3,3,3],strides = [1,1,1],data_format="channels_last")
+            self.conv_3d_l5 = tf.keras.layers.Conv3DTranspose(filters = 64,kernel_size=[3,3,2],strides = [1,1,1],data_format="channels_last")
             self.conv_3d_upool_l5 = tf.keras.layers.UpSampling3D()
 
         with tf.name_scope("Layer_6") as scope:
-            self.conv_3d_l6 = tf.keras.layers.Conv3DTranspose(filters = 128,kernel_size = [3,3,3],strides = [1,1,1],data_format = "channels_last")
+            self.conv_3d_l6 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [3,3,2],strides = [1,1,1],data_format = "channels_last")
 
         with tf.name_scope("Layer_7") as scope:
-            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 64,kernel_size = [5,5,5],strides = [1,1,1],data_format = "channels_last")
+            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,5],strides = [1,1,1],data_format = "channels_last")
 
 
     def call(self,input_tensor):
 
+        print('layer_1')
         tensor = self.conv_3d_l1(input_tensor)        
         tensor = self.batch_l1(tensor + input_tensor)
-        
+
+        print('layer_2')
         tensor = self.conv_3d_l2(tensor)
         tensor = self.batch_l2(tensor)
 
+        print('layer_3')
         tensor = self.conv_3d_l3(tensor)
         tensor = self.batch_l3(tensor)
 
+
+        print('layer_4')
         tensor = self.conv_3d_l4(tensor)
         tensor = self.batch_l4(tensor)
+        print(tensor)
         tensor = self.pool_3d_l4(tensor)
 
+        print('layer_5')
         tensor = self.conv_3d_l5(tensor)
         tensor = self.conv_3d_upool_l5(tensor)
 
+        print('layer_6')
         tensor = self.conv_3d_l6(tensor)
+
+        print('layer_7')
         tensor = self.conv_3d_l7(tensor)
 
 
@@ -112,6 +123,18 @@ class TDDD_Net(tf.keras.Model):
         print(l2_non_match.numpy())
 
 
+    def compute_loss(self,tensor,match,non_match = None):
+
+        descriptor_a = tf.gather_nd(tensor[0,:], match[:,:3])
+        descriptor_b =  tf.gather_nd(tensor[0,:], match[:,3:6])
+        match_loss = tf.reduce_mean(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 1))
+
+        #need implement
+        non_match_loss = 0
+
+        print(match_loss)
+
+
 
     @property
     def config(self):
@@ -123,3 +146,21 @@ class TDDD_Net(tf.keras.Model):
     #         self.__config = val
     #     else:
     #         print('please use a dict')
+
+if __name__ == '__main__':
+    import pathlib as PH
+    print(tf.__version__)
+
+    current_path = PH.Path(__file__).parent
+    data_path = current_path.joinpath('data')
+    x = [str(x) for x in data_path.glob('**/*voxel*.npy')]
+    y = [str(y) for y in data_path.glob('**/*correspondence*.npy')]
+
+    steps = 1
+
+    Model = TDDD_Net(config)
+    for i in range(steps):
+        voxel_descriptor = Model(np.load(x[i])[None,...,None])
+        print(voxel_descriptor)
+        correspondence = np.load(y[0]).astype('int')
+        Model.compute_loss(voxel_descriptor,correspondence,non_match = None)
