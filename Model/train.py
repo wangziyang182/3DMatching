@@ -24,8 +24,10 @@ def main():
     # if FLAGS.age is not None:
     #     pass
     data = dataset()
+    data.x_y_split()
+
     steps = 30
-    optimizer = tf.keras.optimizers.Adam()
+    optimizer = tf.keras.optimizers.Adam(1e-4)
     from_scratch = True
 
     
@@ -49,8 +51,8 @@ def main():
     for i in range(steps):
 
         #load correspondence and tsdf_volume
-        tsdf_volume_batch,correspondence_batch,non_correspondence = data.generate_data(1)
-        Model.train_and_checkpoint(tsdf_volume_batch,correspondence_batch,non_match = non_correspondence)
+        tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(2)
+        Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = 0.2,from_scratch = from_scratch)
 
         # Model.save_parameter(weights_path)
     

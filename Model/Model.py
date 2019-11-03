@@ -101,12 +101,15 @@ class TDDD_Net(tf.keras.Model):
             hard_negatives = tf.cast(hard_negatives,tf.int32)
             hard_negatives = tf.dtypes.cast(tf.reduce_sum(hard_negatives,axis = 1),tf.float32)
 
-            non_match_loss = tf.reduce_sum((1/ hard_negatives) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
+            non_match_loss = tf.reduce_sum((1/ (hard_negatives + 1)) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
 
             loss = match_loss + non_match_loss
-
+            # loss = match_loss
             print('match_loss',match_loss)
             print('non_match_loss',non_match_loss)
+            print(match_l2_diff)
+            print(tf.sqrt(match_l2_diff))
+            print('hard_negatives',hard_negatives)
 
         print('\n' + 'backward_propogating' + '\n')
         gradients = tape.gradient(loss,self.trainable_variables)
@@ -128,10 +131,10 @@ class TDDD_Net(tf.keras.Model):
         self.ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=self.optimizer, net=self)
         self.manager = tf.train.CheckpointManager(self.ckpt, weights_path, max_to_keep=3)
 
-    def train_and_checkpoint(self,tsdf_volume,match,non_match = None,Non_March_Margin = 10):
-        self.ckpt.restore(self.manager.latest_checkpoint)
+    def train_and_checkpoint(self,tsdf_volume,match,non_match = None,Non_March_Margin = 0.1,from_scratch = True):
 
-        if self.manager.latest_checkpoint:
+        if from_scratch:
+            self.ckpt.restore(self.manager.latest_checkpoint)
             print("Restored from {}".format(self.manager.latest_checkpoint))
         else:
             print("Initializing from scratch.")

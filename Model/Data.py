@@ -1,5 +1,6 @@
 import numpy as np
 import pathlib as PH
+from sklearn.model_selection import train_test_split,ShuffleSplit
 
 class dataset(object):
 
@@ -9,15 +10,23 @@ class dataset(object):
         vol_path = data_path.joinpath('vol_dim.npy')
         self._tsdf_volume_list = tsdf_volume_list = [str(tsdf_volume) for tsdf_volume in data_path.glob('**/*voxel*.npy')]
         self._correspondence_list = correspondence_list = [str(correspondence) for correspondence in data_path.glob('**/*correspondence*.npy')]
+        
         self.data_size = len(self._tsdf_volume_list)
         self._pointer_start = 0
         self._pointer_end = 0
         self._vol_dim = np.load(vol_path)
         # self._config = config
 
+    def x_y_split(self):
 
+        self._tsdf_volume_list_train,\
+        self._tsdf_volume_list_test,\
+        self._correspondence_list_train,\
+        self._correspondence_list_test =train_test_split(self._tsdf_volume_list, self._correspondence_list, test_size=0.33, random_state=0)
+        self.train_size = len(self._correspondence_list_train)
+        self.test_size = len(self._correspondence_list_test)
 
-    def generate_data(self,batch_size = 1):
+    def generate_train_data_batch(self,batch_size = 1):
         #update pointer
         if batch_size == 0:
             raise Exception('batch_size need to be greater than 0')
@@ -27,21 +36,21 @@ class dataset(object):
         self._pointer_end += batch_size
         self._pointer_start = self._pointer_end - batch_size
 
-        if self._pointer_end >= self.data_size:
-            self._pointer_end = self.data_size
+        if self._pointer_end >= self.train_size:
+            self._pointer_end = self.train_size
 
-        volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list[self._pointer_start:self._pointer_end]],axis = 0)
+        volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list_train[self._pointer_start:self._pointer_end]],axis = 0)
 
-        match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+        match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_train[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
 
-        non_matches = self.generate_non_match(match)
+        non_matches = self.generate_non_matches(match)
 
-        if self._pointer_end >= self.data_size:
+        if self._pointer_end >= self.train_size:
             self._pointer_end = 0
 
         return volume,match,non_matches
 
-    def generate_non_match(self,match,margin = 5):
+    def generate_non_matches(self,match,margin = 5):
         non_matches_batch = np.zeros_like(match[:,:,:3])
 
         for i,batch in enumerate(match):
