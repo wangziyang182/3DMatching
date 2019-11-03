@@ -505,7 +505,7 @@ def point_cloud_inside(path ,obj, grid_size,tolerance=0.05):
 
 if __name__ == '__main__':
     
-    num_image = 200
+    num_image = 50
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
     

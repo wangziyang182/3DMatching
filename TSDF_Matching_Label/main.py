@@ -11,7 +11,7 @@ from tsdf_integration import TSDFVolume, draw_points,find_vertices_correspondenc
 #def nounds metric standard(meter)
 vol_bnds = np.array([[-1,5],[-2,2],[0,1]])
 voxel_size = 0.1
-n_imgs = 200
+n_imgs = 50
 multi_images = False
 
 
