@@ -63,8 +63,8 @@ class TDDD_Net(tf.keras.Model):
         return tensor
         
 
-    # @tf.function
-    def train(self,tsdf_volume,match,non_match = None,Non_March_Margin = 10):
+    @tf.function
+    def train(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
         dim_0_index = tf.range(match.shape[0])
         dim_0_index = tf.keras.backend.repeat_elements(dim_0_index, rep=match.shape[1], axis=0)
         dim_0_index = tf.reshape(dim_0_index,[match.shape[0],match.shape[1],1])
@@ -73,7 +73,6 @@ class TDDD_Net(tf.keras.Model):
         match = tf.dtypes.cast(match,tf.int32)
         non_match = tf.dtypes.cast(non_match,tf.int32)
 
-        print(non_match.shape)
         vert_a = tf.concat([dim_0_index,match[:,:,:3]],axis = 2)
         match_a = tf.concat([dim_0_index,match[:,:,3:6]],axis = 2)
         non_match_a = tf.concat([dim_0_index,non_match[:,:,3:6]],axis = 2)
@@ -83,6 +82,7 @@ class TDDD_Net(tf.keras.Model):
             descriptor_a = tf.gather_nd(voxel_descriptor, vert_a)
             descriptor_match_a =  tf.gather_nd(voxel_descriptor, match_a)
             descriptor_non_match_a = tf.gather_nd(voxel_descriptor, non_match_a)
+
             print('voxel_descriptor',voxel_descriptor.shape)
             #checking
             # print(descriptor_a[0,1])
@@ -99,16 +99,13 @@ class TDDD_Net(tf.keras.Model):
             
             non_match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_a - descriptor_non_match_a) , axis = 2))
 
-            print('non_match_l2_diff',non_match_l2_diff)
             hard_negatives = tf.greater((Non_March_Margin - non_match_l2_diff),0)
             hard_negatives = tf.cast(hard_negatives,tf.int32)
             hard_negatives = tf.dtypes.cast(tf.reduce_sum(hard_negatives,axis = 1),tf.float32)
 
-            print(tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
-            non_match_loss = (1/ hard_negatives) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2)
+            non_match_loss = tf.reduce_sum((1/ hard_negatives) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
 
             loss = match_loss + non_match_loss
-            print('f')
 
         gradients = tape.gradient(loss,self.trainable_variables)
         self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
