@@ -60,11 +60,13 @@ class dataset(object):
     def tsdf_volume_list(self,value):
         self._tsdf_volume_list = value
    
-
-
-
+   
 if __name__ == '__main__':
     data = dataset()
     # print(data.tsdf_volume_list)
-    x,y = data.generate_data()
-    x,y = data.generate_data(1)
+    for i in range(10):
+        # x,y = data.generate_data()
+        x,y = data.generate_data(1)
+        # print(x)
+        print('-------')
+        print(y)

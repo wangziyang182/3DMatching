@@ -1,6 +1,9 @@
 import numpy as np
 from skimage import measure
 import time
+import cv2
+import numpy as np
+import open3d as o3d
 
 
 try:
@@ -147,7 +150,7 @@ class TSDFVolume(object):
             self._n_gpu_loops = int(np.ceil(float(np.prod(self._vol_dim))/float(np.prod(self._max_gpu_grid_dim)*self._max_gpu_threads_per_block)))
 
 
-    def integrate(self,color_im,depth_im,cam_intr,cam_pose,obs_weight=1.):
+    def integrate(self,color_im,depth_im,cam_intr,RT,obs_weight=1.):
         im_h = depth_im.shape[0]
         im_w = depth_im.shape[1]
 
@@ -179,49 +182,31 @@ class TSDFVolume(object):
 
 
             # Voxel coordinates to world coordinates
-            # world_pts = self._vol_lower_bounds.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
-
-            # # World coordinates to camera coordinates
-            # world2cam = np.linalg.inv(cam_pose)
-
-            # ### delete later
-            # cam_pts = np.dot(world2cam[:3,:3],world_pts)+np.tile(world2cam[:3,3].reshape(3,1),(1,world_pts.shape[1]))
-
-            # world_pts_homo = np.concatenate([world_pts,np.ones((1,world_pts.shape[1]))],axis = 0)
-
-            # cam_pts = (world2cam @ world_pts_homo)[:3,:]
-
-            # pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
-
-            # pix_x = pix[0,:]
-            # pix_y = pix[1,:]
-            
-
             world_pts = self._vol_lower_bounds.reshape(-1,1)+vox_coords.astype(float)*self._voxel_size
 
-            # World coordinates to camera coordinates
-            world2cam = np.linalg.inv(cam_pose)
-            cam_pts = np.dot(world2cam[:3,:3],world_pts)+np.tile(world2cam[:3,3].reshape(3,1),(1,world_pts.shape[1]))
+            world_pts_homo = np.concatenate([world_pts,np.ones((1,world_pts.shape[1]))],axis = 0)
 
-            # Camera coordinates to image pixels
-            pix_x = np.round(cam_intr[0,0]*(cam_pts[0,:]/cam_pts[2,:])+cam_intr[0,2]).astype(int)
-            pix_y = np.round(cam_intr[1,1]*(cam_pts[1,:]/cam_pts[2,:])+cam_intr[1,2]).astype(int)
+            cam_pts = (RT @ world_pts_homo)[:3,:]
+
+            pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
+
+            pix_x = pix[0,:]
+            pix_y = pix[1,:]
 
             # Skip if outside view frustum
             valid_pix = np.logical_and(pix_x >= 0,
                         np.logical_and(pix_x < im_w,
                         np.logical_and(pix_y >= 0,
                         np.logical_and(pix_y < im_h,
-                                       cam_pts[2,:] < 0))))
+                                       cam_pts[2,:] > 0))))
 
             print('valid_pix',np.sum(valid_pix))
 
             depth_val = np.zeros(pix_x.shape)
-            depth_val[valid_pix] = depth_im[pix_y[valid_pix],pix_x[valid_pix]]
+            depth_val[valid_pix] = depth_im[pix_y[valid_pix],pix_x[valid_pix]] 
 
             # Integrate TSDF
             depth_diff = depth_val-cam_pts[2,:]
-
             
             valid_pts = np.logical_and(depth_val > 0,depth_diff >= -self._trunc_margin)
             dist = np.minimum(1.,np.divide(depth_diff,self._trunc_margin))
@@ -245,7 +230,6 @@ class TSDFVolume(object):
             new_r = np.minimum(np.round(np.divide(np.multiply(old_r,w_old)+new_r,w_new)),255.);
             self._color_vol_cpu[vox_coords[0,valid_pts],vox_coords[1,valid_pts],vox_coords[2,valid_pts]] = new_b*256.*256.+new_g*256.+new_r;
 
-
     # Copy voxel volume to CPU
     def get_volume(self):
         if FUSION_GPU_MODE:
@@ -261,7 +245,7 @@ class TSDFVolume(object):
         # Marching cubes
         verts,faces,norms,vals = measure.marching_cubes_lewiner(tsdf_vol,level=0)
         verts_ind = np.round(verts).astype(int)
-        verts = verts*self._voxel_size+self._vol_origin # voxel grid coordinates to world coordinates
+        verts = verts*self._voxel_size+self._vol_lower_bounds # voxel grid coordinates to world coordinates
 
         # Get vertex colors
         rgb_vals = color_vol[verts_ind[:,0],verts_ind[:,1],verts_ind[:,2]]
@@ -316,39 +300,57 @@ def meshwrite(filename,verts,faces,norms,colors):
 
     ply_file.close()
 
-def draw_points(path,cam_pose,cam_intr,vertices,obj_scale):
+def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 5):
 
-    # World coordinates to camera coordinates
-    world2cam = np.linalg.inv(cam_pose)
-    # print(world2cam[:3,:])
-    # print(vertices.shape)
-    # print(cam_pose)
-    # print(cam_intr)
+    '''
+    test if 3d points transform to pxiel is correct
+    '''
+    world_pts_homo_a = np.concatenate([vertices_a,np.ones((vertices_a.shape[0],1))],axis = 1)
+    cam_pix_a = cam_intr @ RT @ world_pts_homo_a.T
+    cam_pix_a = np.round((cam_pix_a[:2,:] / cam_pix_a[2,:]).T).astype('int')
+    
+    world_pts_homo_b = np.concatenate([vertices_b,np.ones((vertices_b.shape[0],1))],axis = 1)
 
-    world_pts_homo = np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1)
+    cam_pix_b = cam_intr @ RT @ world_pts_homo_b.T
+    cam_pix_b = np.round((cam_pix_b[:2,:] / cam_pix_b[2,:]).T).astype('int')
 
-    cam_pts = (world2cam @ world_pts_homo.T)[:3,:]
-
-    pix = np.round((cam_intr @ cam_pts / (cam_intr @ cam_pts)[2,:])).astype(int)[:2,:]
-
-    pix = pix.T
-
-
-    # K = cam_intr @ world2cam[:3,:]
-    # vertices_homo = np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1)
-    # pix = (K @ vertices_homo.T).T
-    # pix = np.round(pix[:,:2] / pix[:,2:3]).astype('int')
 
     img = cv2.imread(str(path),cv2.IMREAD_COLOR)
-    for item in pix:
-        cv2.circle(img,(item[0],item[1]), 1, (0,255,0), -1)
-    cv2.imshow('img',img)
-    cv2.waitKey(0)
+    index = np.random.choice(len(vertices_a),num_pts,replace = False)
 
-def find_vertices_correspondence(scale,object_pose,vertices):
-    object_pose = np.linalg.inv(scale) @ object_pose
-    scale = np.array([scale[0][0],scale[1][1],scale[2][2]])[...,None]
-    object_pose[:3,3:4] = object_pose[:3,3:4] * scale
+    for item in cam_pix_a[index,:]:
+        cv2.circle(img,(item[0],item[1]), 1, (0,255,0), -1)
+    for item in cam_pix_b[index,:]:
+        cv2.circle(img,(item[0],item[1]), 1, (0,255,0), -1)
+
+    for i in range(cam_pix_a[index,:].shape[0]):
+        lineThickness = 1
+        cv2.line(img, (cam_pix_a[i,0], cam_pix_a[i,1]), (cam_pix_b[i,0], cam_pix_b[i,1]), (0,255,0), lineThickness)
+        
+        cv2.imshow('img',img)
+    cv2.waitKey()
+
+def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 5):
+    pcd = o3d.io.read_point_cloud(ply_path)
+    
+    #random sample
+    index = np.random.choice(len(vertices_a),num_pts,replace = False)
+    vertices_a = vertices_a[index,:]
+    vertices_b = vertices_b[index,:]
+    points = np.concatenate([vertices_a,vertices_b],axis = 0)
+    lines = [[i, i + len(vertices_a)] for i in range(len(vertices_a))]
+    colors = [[1, 0, 0] for i in range(len(lines))]
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(points)
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+
+    o3d.visualization.draw_geometries([pcd,line_set])
+
+
+
+
+def find_vertices_correspondence(object_pose,vertices):
     y = object_pose @ np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1).T
     return y.T[:,:3]
 
@@ -358,3 +360,4 @@ def world_to_voxel(voxel_size,vertices,bounds):
     voxel[:,1:2] = voxel[:,1:2] +np.round((-bounds[1] / voxel_size)).astype(int)
     voxel[:,2:3] = voxel[:,2:3] +np.round((-bounds[2] / voxel_size)).astype(int)
     return voxel
+

@@ -1,14 +1,14 @@
 import tensorflow as tf
 import numpy as np
-from Config import config
+# from Config import config
 
 class TDDD_Net(tf.keras.Model):
   
-    def __init__(self,config):
+    def __init__(self):
         super(TDDD_Net,self).__init__()
         
-        self._config = config
-        self.optimizer = tf.keras.optimizers.Adam()
+        self._optimizer = None
+        # self._config = config
 
         with tf.name_scope("Layer_1") as scope:
             self.conv_3d_l1 = tf.keras.layers.Conv3D(filters = 32, kernel_size = [3,3,2], strides = [1,1,1], padding = 'same',activation='relu')
@@ -40,32 +40,24 @@ class TDDD_Net(tf.keras.Model):
 
     def call(self,input_tensor):
 
-        print('layer_1')
         tensor = self.conv_3d_l1(input_tensor)        
         tensor = self.batch_l1(tensor + input_tensor)
 
-        print('layer_2')
         tensor = self.conv_3d_l2(tensor)
         tensor = self.batch_l2(tensor)
 
-        print('layer_3')
         tensor = self.conv_3d_l3(tensor)
         tensor = self.batch_l3(tensor)
 
-
-        print('layer_4')
         tensor = self.conv_3d_l4(tensor)
         tensor = self.batch_l4(tensor)
         tensor = self.pool_3d_l4(tensor)
 
-        print('layer_5')
         tensor = self.conv_3d_l5(tensor)
         tensor = self.conv_3d_upool_l5(tensor)
 
-        print('layer_6')
         tensor = self.conv_3d_l6(tensor)
 
-        print('layer_7')
         tensor = self.conv_3d_l7(tensor)
 
         return tensor
@@ -84,14 +76,11 @@ class TDDD_Net(tf.keras.Model):
         match_b = tf.concat([dim_0_index,match[:,:,3:6]],axis = 2)
         
         with tf.GradientTape() as tape:
-            print('a')
             voxel_descriptor = self.call(tsdf_volume)
-            print('b')
             descriptor_a = tf.gather_nd(voxel_descriptor, match_a)
             descriptor_b =  tf.gather_nd(voxel_descriptor, match_b)
 
-            print('c')
-
+            print('voxel_descriptor',voxel_descriptor.shape)
             #checking
             # print(descriptor_a[0,1])
             # print(voxel_descriptor[0,match[0,1,0],match[0,1,1],match[0,1,2]])
@@ -100,23 +89,56 @@ class TDDD_Net(tf.keras.Model):
             # print(voxel_descriptor[0,match[0,1,3],match[0,1,4],match[0,1,5]])
 
             # descriptor_b =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
-            print('d')
-
-            match_loss = tf.reduce_mean(tf.reduce_mean(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 2)))
-            print('e')
+            match_loss = tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 2)))
             #need implement
             non_match_loss = 0
             loss = match_loss + non_match_loss
             print('f')
 
         gradients = tape.gradient(loss,self.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-        print('g')
+        self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
+        return loss
+
+    def save_parameter(self, file_path):
+        self.save_weights(file_path, save_format='tf')
+
+
+    def load_weights(self, file_path):
+        self.load_weights('path_to_my_weights')
+
+
+    def create_ckpt_manager(self,weights_path,max_to_keep = 3):
+        self.ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=self.optimizer, net=self)
+        self.manager = tf.train.CheckpointManager(self.ckpt, weights_path, max_to_keep=3)
+
+
+    def train_and_checkpoint(self,tsdf_volume,match,non_match = None):
+        self.ckpt.restore(self.manager.latest_checkpoint)
+
+        if self.manager.latest_checkpoint:
+            print("Restored from {}".format(self.manager.latest_checkpoint))
+        else:
+            print("Initializing from scratch.")
+
+        loss = self.train(tsdf_volume,match,non_match = None)
+        self.ckpt.step.assign_add(1)
+
+        if int(self.ckpt.step) % 1 == 0:
+            save_path = self.manager.save()
+            print("Saved checkpoint for step {}: {}".format(int(self.ckpt.step), save_path))
+            print("loss {:1.2f}".format(loss.numpy()))
 
     @property
-    def config(self):
-        return self._config
+    def optimizer(self):
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self,val):
+        self._optimizer = val
+    # @property
+    # def config(self):
+    #     return self._config
 
     # @config.setter
     # def config(self, val):
