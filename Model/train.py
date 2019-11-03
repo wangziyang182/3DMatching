@@ -8,7 +8,7 @@ import pathlib as PH
 from Data import dataset
 from absl import flags
 from absl import app
-
+import shutil
 # flags = tf.compat.v1.flags.Flag
 FLAGS = flags.FLAGS
 
@@ -24,16 +24,21 @@ def main():
     # if FLAGS.age is not None:
     #     pass
     data = dataset()
-    steps = 1
+    steps = 30
     optimizer = tf.keras.optimizers.Adam()
-    from_scratch = False
+    from_scratch = True
 
     
     BASE_DIR = PH.Path(__file__).parent.parent
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')
+    
+    if from_scratch:
+        shutil.rmtree(str(MODEL_WEIGHTS_PATH))
+
     if not os.path.exists(str(MODEL_WEIGHTS_PATH)):
         os.mkdir(str(MODEL_WEIGHTS_PATH))
     weights_path = str(MODEL_WEIGHTS_PATH.joinpath('ckpt'))
+
 
 
     # define Matching Net
@@ -44,8 +49,7 @@ def main():
     for i in range(steps):
 
         #load correspondence and tsdf_volume
-        tsdf_volume_batch,correspondence_batch,non_correspondence = data.generate_data(2)
-        print(non_correspondence.shape)
+        tsdf_volume_batch,correspondence_batch,non_correspondence = data.generate_data(1)
         Model.train_and_checkpoint(tsdf_volume_batch,correspondence_batch,non_match = non_correspondence)
 
         # Model.save_parameter(weights_path)

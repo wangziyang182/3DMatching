@@ -28,14 +28,14 @@ class TDDD_Net(tf.keras.Model):
             self.pool_3d_l4 = tf.keras.layers.AveragePooling3D()
 
         with tf.name_scope("Layer_5") as scope:
-            self.conv_3d_l5 = tf.keras.layers.Conv3DTranspose(filters = 64,kernel_size=[3,3,2],strides = [1,1,1],data_format="channels_last")
+            self.conv_3d_l5 = tf.keras.layers.Conv3DTranspose(filters = 64,kernel_size=[3,3,2],strides = [1,1,1],data_format="channels_last",activation = 'relu')
             self.conv_3d_upool_l5 = tf.keras.layers.UpSampling3D()
 
         with tf.name_scope("Layer_6") as scope:
-            self.conv_3d_l6 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [3,3,2],strides = [1,1,1],data_format = "channels_last")
+            self.conv_3d_l6 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [3,3,2],strides = [1,1,1],data_format = "channels_last",activation = 'relu')
 
         with tf.name_scope("Layer_7") as scope:
-            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,4],strides = [1,1,1],data_format = "channels_last")
+            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,4],strides = [1,1,1],data_format = "channels_last",activation = 'relu')
 
 
     def call(self,input_tensor):
@@ -63,8 +63,8 @@ class TDDD_Net(tf.keras.Model):
         return tensor
         
 
-    @tf.function
-    def train(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
+    # @tf.function
+    def compute_loss_gradient(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
         dim_0_index = tf.range(match.shape[0])
         dim_0_index = tf.keras.backend.repeat_elements(dim_0_index, rep=match.shape[1], axis=0)
         dim_0_index = tf.reshape(dim_0_index,[match.shape[0],match.shape[1],1])
@@ -78,12 +78,11 @@ class TDDD_Net(tf.keras.Model):
         non_match_a = tf.concat([dim_0_index,non_match[:,:,3:6]],axis = 2)
         
         with tf.GradientTape() as tape:
+            print('\n' + 'forward_propogating' + '\n')
             voxel_descriptor = self.call(tsdf_volume)
             descriptor_a = tf.gather_nd(voxel_descriptor, vert_a)
             descriptor_match_a =  tf.gather_nd(voxel_descriptor, match_a)
             descriptor_non_match_a = tf.gather_nd(voxel_descriptor, non_match_a)
-
-            print('voxel_descriptor',voxel_descriptor.shape)
             #checking
             # print(descriptor_a[0,1])
             # print(voxel_descriptor[0,match[0,1,0],match[0,1,1],match[0,1,2]])
@@ -96,7 +95,6 @@ class TDDD_Net(tf.keras.Model):
 
             match_loss = tf.reduce_mean(tf.reduce_mean(match_l2_diff))
 
-            
             non_match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_a - descriptor_non_match_a) , axis = 2))
 
             hard_negatives = tf.greater((Non_March_Margin - non_match_l2_diff),0)
@@ -107,10 +105,16 @@ class TDDD_Net(tf.keras.Model):
 
             loss = match_loss + non_match_loss
 
-        gradients = tape.gradient(loss,self.trainable_variables)
-        self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+            print('match_loss',match_loss)
+            print('non_match_loss',non_match_loss)
 
+        print('\n' + 'backward_propogating' + '\n')
+        gradients = tape.gradient(loss,self.trainable_variables)
+        # self.gradients = gradients
+        self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         return loss
+
+
 
     def save_parameter(self, file_path):
         self.save_weights(file_path, save_format='tf')
@@ -132,7 +136,8 @@ class TDDD_Net(tf.keras.Model):
         else:
             print("Initializing from scratch.")
 
-        loss = self.train(tsdf_volume,match,non_match,Non_March_Margin)
+        loss = self.compute_loss_gradient(tsdf_volume,match,non_match,Non_March_Margin)
+
         self.ckpt.step.assign_add(1)
 
         if int(self.ckpt.step) % 1 == 0:
