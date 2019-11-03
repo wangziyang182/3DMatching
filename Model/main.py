@@ -16,12 +16,13 @@ flags.DEFINE_integer('max_steps', 2000, 'Number of steps to run trainer.')
 
 
 
-def main(argv):
+# def main(argv):
+
+def main():
     # if FLAGS.debug:
     #     print('non-flag arguments:', argv)
     # if FLAGS.age is not None:
     #     pass
-
     data = dataset()
     steps = 1
     Model = TDDD_Net(config)
@@ -35,4 +36,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    app.run(main)
+    # app.run(main)
+    main()

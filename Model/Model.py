@@ -68,27 +68,29 @@ class TDDD_Net(tf.keras.Model):
         print('layer_7')
         tensor = self.conv_3d_l7(tensor)
 
-
-
         return tensor
         
 
-    @tf.function
+    # @tf.function
     def train(self,tsdf_volume,match,non_match = None):
         dim_0_index = tf.range(match.shape[0])
         dim_0_index = tf.keras.backend.repeat_elements(dim_0_index, rep=match.shape[1], axis=0)
         dim_0_index = tf.reshape(dim_0_index,[match.shape[0],match.shape[1],1])
         
-        tf.dtypes.cast(dim_0_index,tf.int32)
-        tf.dtypes.cast(match,tf.int32)
+        dim_0_index = tf.dtypes.cast(dim_0_index,tf.int32)
+        match = tf.dtypes.cast(match,tf.int32)
         dim_0_index.dtype
-        match.dtype
         match_a = tf.concat([dim_0_index,match[:,:,:3]],axis = 2)
         match_b = tf.concat([dim_0_index,match[:,:,3:6]],axis = 2)
+        
         with tf.GradientTape() as tape:
+            print('a')
             voxel_descriptor = self.call(tsdf_volume)
+            print('b')
             descriptor_a = tf.gather_nd(voxel_descriptor, match_a)
             descriptor_b =  tf.gather_nd(voxel_descriptor, match_b)
+
+            print('c')
 
             #checking
             # print(descriptor_a[0,1])
@@ -98,15 +100,18 @@ class TDDD_Net(tf.keras.Model):
             # print(voxel_descriptor[0,match[0,1,3],match[0,1,4],match[0,1,5]])
 
             # descriptor_b =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
-           
-            match_loss = tf.reduce_mean(tf.reduce_mean(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 2)))
+            print('d')
 
+            match_loss = tf.reduce_mean(tf.reduce_mean(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 2)))
+            print('e')
             #need implement
             non_match_loss = 0
             loss = match_loss + non_match_loss
+            print('f')
 
         gradients = tape.gradient(loss,self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        print('g')
 
 
     @property
