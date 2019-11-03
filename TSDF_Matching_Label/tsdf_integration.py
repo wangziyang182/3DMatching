@@ -348,8 +348,6 @@ def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 5):
     o3d.visualization.draw_geometries([pcd,line_set])
 
 
-
-
 def find_vertices_correspondence(object_pose,vertices):
     y = object_pose @ np.concatenate([vertices,np.ones((vertices.shape[0],1))],axis = 1).T
     return y.T[:,:3]

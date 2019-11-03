@@ -29,14 +29,17 @@ cam_intr = np.load(WORKING_DIR.joinpath('camera-intrinsics.npy'))
 if not os.path.exists(BASE_DIR.joinpath('env').joinpath('tsdf_projected_ply')):
     os.mkdir(BASE_DIR.joinpath('env').joinpath('tsdf_projected_ply'))
 mesh_save_path = BASE_DIR.joinpath('env').joinpath('tsdf_projected_ply')
+vol_dim_path = MODEL_DATA_DIR.joinpath('vol_dim.npy')
 
 if multi_images:
     tsdf_vol = TSDFVolume(vol_bnds,voxel_size=voxel_size)
+    np.save(vol_dim_path,tsdf_vol._vol_dim)
+
 
 for i in range(n_imgs):
     if not multi_images:
         tsdf_vol = TSDFVolume(vol_bnds,voxel_size=voxel_size)
-
+    np.save(vol_dim_path,tsdf_vol._vol_dim)
     color_image_path = WORKING_DIR.joinpath('frame-{number:06}.color.png'.format(number = i))
     depth_image_path = WORKING_DIR.joinpath('frame-{number:06}.depth.png'.format(number = i))
     camera_RT = WORKING_DIR.joinpath('frame-camera-{number:06}.RT.npy'.format(number = i))

@@ -64,34 +64,49 @@ class TDDD_Net(tf.keras.Model):
         
 
     # @tf.function
-    def train(self,tsdf_volume,match,non_match = None):
+    def train(self,tsdf_volume,match,non_match = None,Non_March_Margin = 10):
         dim_0_index = tf.range(match.shape[0])
         dim_0_index = tf.keras.backend.repeat_elements(dim_0_index, rep=match.shape[1], axis=0)
         dim_0_index = tf.reshape(dim_0_index,[match.shape[0],match.shape[1],1])
         
         dim_0_index = tf.dtypes.cast(dim_0_index,tf.int32)
         match = tf.dtypes.cast(match,tf.int32)
-        dim_0_index.dtype
-        match_a = tf.concat([dim_0_index,match[:,:,:3]],axis = 2)
-        match_b = tf.concat([dim_0_index,match[:,:,3:6]],axis = 2)
+        non_match = tf.dtypes.cast(non_match,tf.int32)
+
+        print(non_match.shape)
+        vert_a = tf.concat([dim_0_index,match[:,:,:3]],axis = 2)
+        match_a = tf.concat([dim_0_index,match[:,:,3:6]],axis = 2)
+        non_match_a = tf.concat([dim_0_index,non_match[:,:,3:6]],axis = 2)
         
         with tf.GradientTape() as tape:
             voxel_descriptor = self.call(tsdf_volume)
-            descriptor_a = tf.gather_nd(voxel_descriptor, match_a)
-            descriptor_b =  tf.gather_nd(voxel_descriptor, match_b)
-
+            descriptor_a = tf.gather_nd(voxel_descriptor, vert_a)
+            descriptor_match_a =  tf.gather_nd(voxel_descriptor, match_a)
+            descriptor_non_match_a = tf.gather_nd(voxel_descriptor, non_match_a)
             print('voxel_descriptor',voxel_descriptor.shape)
             #checking
             # print(descriptor_a[0,1])
             # print(voxel_descriptor[0,match[0,1,0],match[0,1,1],match[0,1,2]])
 
-            # print(descriptor_b[0,1])
+            # print(descriptor_match_a[0,1])
             # print(voxel_descriptor[0,match[0,1,3],match[0,1,4],match[0,1,5]])
 
-            # descriptor_b =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
-            match_loss = tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(tf.square(descriptor_a - descriptor_b) , axis = 2)))
-            #need implement
-            non_match_loss = 0
+            # descriptor_match_a =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
+            match_l2_diff = tf.reduce_sum(tf.square(descriptor_a - descriptor_match_a) , axis = 2)
+
+            match_loss = tf.reduce_mean(tf.reduce_mean(match_l2_diff))
+
+            
+            non_match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_a - descriptor_non_match_a) , axis = 2))
+
+            print('non_match_l2_diff',non_match_l2_diff)
+            hard_negatives = tf.greater((Non_March_Margin - non_match_l2_diff),0)
+            hard_negatives = tf.cast(hard_negatives,tf.int32)
+            hard_negatives = tf.dtypes.cast(tf.reduce_sum(hard_negatives,axis = 1),tf.float32)
+
+            print(tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
+            non_match_loss = (1/ hard_negatives) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2)
+
             loss = match_loss + non_match_loss
             print('f')
 
@@ -112,8 +127,7 @@ class TDDD_Net(tf.keras.Model):
         self.ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=self.optimizer, net=self)
         self.manager = tf.train.CheckpointManager(self.ckpt, weights_path, max_to_keep=3)
 
-
-    def train_and_checkpoint(self,tsdf_volume,match,non_match = None):
+    def train_and_checkpoint(self,tsdf_volume,match,non_match = None,Non_March_Margin = 10):
         self.ckpt.restore(self.manager.latest_checkpoint)
 
         if self.manager.latest_checkpoint:
@@ -121,14 +135,19 @@ class TDDD_Net(tf.keras.Model):
         else:
             print("Initializing from scratch.")
 
-        loss = self.train(tsdf_volume,match,non_match = None)
+        loss = self.train(tsdf_volume,match,non_match,Non_March_Margin)
         self.ckpt.step.assign_add(1)
 
         if int(self.ckpt.step) % 1 == 0:
             save_path = self.manager.save()
             print("Saved checkpoint for step {}: {}".format(int(self.ckpt.step), save_path))
             print("loss {:1.2f}".format(loss.numpy()))
+    
+    def restore(self):
+        self.ckpt.restore(self.manager.latest_checkpoint)
 
+
+    # def 
     @property
     def optimizer(self):
         return self._optimizer

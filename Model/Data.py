@@ -6,12 +6,13 @@ class dataset(object):
     def __init__(self):
         current_path = PH.Path(__file__).parent
         data_path = current_path.joinpath('data')
-        
+        vol_path = data_path.joinpath('vol_dim.npy')
         self._tsdf_volume_list = tsdf_volume_list = [str(tsdf_volume) for tsdf_volume in data_path.glob('**/*voxel*.npy')]
         self._correspondence_list = correspondence_list = [str(correspondence) for correspondence in data_path.glob('**/*correspondence*.npy')]
         self.data_size = len(self._tsdf_volume_list)
         self._pointer_start = 0
         self._pointer_end = 0
+        self._vol_dim = np.load(vol_path)
         # self._config = config
 
 
@@ -28,13 +29,43 @@ class dataset(object):
 
         if self._pointer_end >= self.data_size:
             self._pointer_end = self.data_size
+
         volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list[self._pointer_start:self._pointer_end]],axis = 0)
 
-        correspondence = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+        match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+
+        non_matches = self.generate_non_match(match)
+
         if self._pointer_end >= self.data_size:
             self._pointer_end = 0
 
-        return volume,correspondence
+        return volume,match,non_matches
+
+    def generate_non_match(self,match,margin = 5):
+        non_matches_batch = np.zeros_like(match[:,:,:3])
+
+        for i,batch in enumerate(match):
+            vertex_a = batch[:,:3]
+            non_matches = np.zeros_like(vertex_a)
+            for j,vert in enumerate(vertex_a):
+                x = np.random.randint(0,self._vol_dim[0])
+                y = np.random.randint(0,self._vol_dim[1])
+                z = np.random.randint(0,self._vol_dim[2])
+                non_match = np.array([x,y,z])
+                if np.sum((vert - non_match) ** 2) ** 0.5 > margin:
+                    non_matches[j,:] = non_match
+
+            non_matches_batch[i] = non_matches
+        non_matches_batch = np.concatenate([match[:,:,:3],non_matches_batch],axis = 2)
+
+        return non_matches_batch
+
+
+
+        
+
+
+
 
 
 
@@ -64,9 +95,8 @@ class dataset(object):
 if __name__ == '__main__':
     data = dataset()
     # print(data.tsdf_volume_list)
-    for i in range(10):
+    for i in range(1):
         # x,y = data.generate_data()
-        x,y = data.generate_data(1)
+        x,y,y_c = data.generate_data(2)
+        print(y_c)
         # print(x)
-        print('-------')
-        print(y)
