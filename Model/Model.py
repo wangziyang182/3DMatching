@@ -111,6 +111,7 @@ class TDDD_Net(tf.keras.Model):
             print(tf.sqrt(match_l2_diff))
             print('hard_negatives',hard_negatives)
 
+
         print('\n' + 'backward_propogating' + '\n')
         gradients = tape.gradient(loss,self.trainable_variables)
         # self.gradients = gradients
@@ -140,6 +141,7 @@ class TDDD_Net(tf.keras.Model):
             print("Initializing from scratch.")
 
         loss = self.compute_loss_gradient(tsdf_volume,match,non_match,Non_March_Margin)
+
 
         self.ckpt.step.assign_add(1)
 

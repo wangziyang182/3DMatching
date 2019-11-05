@@ -11,7 +11,7 @@ from tsdf_integration import TSDFVolume, draw_points,find_vertices_correspondenc
 #def nounds metric standard(meter)
 vol_bnds = np.array([[-1,5],[-2,2],[0,1]])
 voxel_size = 0.1
-n_imgs = 50
+n_imgs = 2
 multi_images = False
 
 
@@ -38,6 +38,7 @@ if multi_images:
 
 for i in range(n_imgs):
     if not multi_images:
+        print('hahah')
         tsdf_vol = TSDFVolume(vol_bnds,voxel_size=voxel_size)
     np.save(vol_dim_path,tsdf_vol._vol_dim)
     color_image_path = WORKING_DIR.joinpath('frame-{number:06}.color.png'.format(number = i))
@@ -87,7 +88,7 @@ if multi_images:
     meshwrite(mesh_path,verts,faces,norms,colors)
 
 
-# view_geometry(str(mesh_path),vertices_x,vertices_y)
+view_geometry(str(mesh_path),vertices_x,vertices_y)
 # draw_points(color_image_path,RT,cam_intr,vertices_x,vertices_y)
     # tsdf_vol.find_voxel_correspondence(cam_intr,RT,keypts)
 

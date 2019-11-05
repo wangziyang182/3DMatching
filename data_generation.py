@@ -26,6 +26,8 @@ def look_at(obj_camera, point):
 
     
     bpy.context.view_layer.update()
+
+#def remove_bounding_box():
     
     
 def reset_all():
@@ -33,7 +35,13 @@ def reset_all():
     delete all the object 
     reset frame
     '''
+    
+    objs = bpy.data.objects
+    for o in bpy.data.objects:
+        objs.remove(o, do_unlink=True)
+
     for o in bpy.context.scene.objects:
+        print('o',o)
         if o.type == 'LIGHT' or o.type == 'CAMERA' or o.type == 'MESH':
             o.select_set(True)
         else:
@@ -88,10 +96,11 @@ def add_mesh(shape,size,location,scale,path = None):
         bpy.context.active_object.name = 'new_name'
     
     if shape == 'custom_stl':
-        bpy.ops.import_mesh.stl(filepath=path)
+        custom_mesh = bpy.ops.import_mesh.stl(filepath=path)
         bpy.context.object.scale[0] = scale[0]
         bpy.context.object.scale[1] = scale[1]
         bpy.context.object.scale[2] = scale[2]
+#        bpy.context.collection.objects.link(custom_mesh)
         
     bpy.ops.mesh.primitive_plane_add(location=(0, 0, 0))
     bpy.context.object.scale[0] = 40
@@ -298,19 +307,95 @@ def duplicate_obj(obj):
     obj_copy.data = obj_copy.data.copy()
     bpy.context.collection.objects.link(obj_copy)
     
+    return obj_copy
+    
+def create_rect(obj,translation):
+    
+    bound_box = np.array(obj.bound_box)
+    bounding_points = (np.array(obj.matrix_world)[:3,:3] @ bound_box.T).T
+    
+    min_x,min_y,min_z = np.min(bounding_points[:,0]),np.min(bounding_points[:,1]),np.min(bounding_points[:,2])
+    max_x,max_y,max_z = np.max(bounding_points[:,0]),np.max(bounding_points[:,1]),np.max(bounding_points[:,2])
+    
+    min_x = min_x + translation[0] - 1.5
+    max_x = max_x + translation[0] + 0.5
+    
+    min_y = min_y + translation[1] - 0.6
+    max_y = max_y + translation[1] + 0.6
+    
+    min_z = min_z + translation[2] - 0.3
+    max_z = max_z + translation[2] - 0.001
+    
+#    print('-' * 50)
+#    print(min_x,max_x)
+#    print(min_y,max_y)
+#    print(min_z,max_z)
+    
+    verts = [
+    (max_x, max_y, min_z),
+    (max_x, min_y, min_z),
+    (min_x, min_y, min_z),
+    (min_x, max_y, min_z),
+    (max_x, max_y, max_z),
+    (max_x, min_y, max_z),
+    (min_x, min_y, max_z),
+    (min_x, max_y, max_z)
+    ]
 
-def transform_and_save(path,num,obj,angle,location = (3,0,0)):
+    faces = [
+    (0, 1, 2, 3),
+    (4, 7, 6, 5),
+    (0, 4, 5, 1),
+    (1, 5, 6, 2),
+    (2, 6, 7, 3),
+    (4, 0, 3, 7)
+    ]
+    
+    mesh_data = bpy.data.meshes.new("cube_mesh_data")
+    mesh_data.from_pydata(verts, [], faces)
+    mesh_data.update()
+
+    Bounding_Mesh = bpy.data.objects.new("Bounding_Mesh", mesh_data)
+
+#    scene = bpy.context.scene
+#    scene.collection.objects.link(rect)
+    bpy.context.collection.objects.link(Bounding_Mesh)
+    
+    return Bounding_Mesh
+    
+
+def transform_and_save(path,num,obj,angle,translation = (3,0,0)):
+    
+    #select context
+    context = bpy.context
+    obj_placeholder = duplicate_obj(obj)
     
     #transformation
     rot_mat = Matrix.Rotation(radians(angle), 4, 'Z')         
-    trans_mat = Matrix.Translation(location)
+    trans_mat = Matrix.Translation(translation)
     mat = trans_mat @ rot_mat
     
     #record vertices
     vertics = np.zeros((len(obj.data.vertices),3))
     for i,vert in enumerate(obj.data.vertices):
-        vertics[i,:] = obj.matrix_world @ vert.co
-    obj.matrix_world = mat @ obj.matrix_world   
+        vertics[i,:] = obj_placeholder.matrix_world @ vert.co
+    obj_placeholder.matrix_world = mat @ obj_placeholder.matrix_world
+    
+    Bounding_Mesh = create_rect(obj,translation)
+    
+    large_cube = context.object
+
+    mod = Bounding_Mesh.modifiers.new("Boolean", type='BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = obj_placeholder
+
+    bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod.name)  
+    
+    print('before',obj_placeholder.matrix_world @ list(obj.data.vertices)[0].co)
+    print('after',obj.matrix_world @ list(obj.data.vertices)[0].co)
+    
+    context.collection.objects.unlink(obj_placeholder)    
+     
     save_path_npy = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.npy'.format(num)))
     save_path_npy_vertices = str(path.joinpath('data').joinpath('frame-object-{:06}.vertices.npy'.format(num)))
     
@@ -505,13 +590,12 @@ def point_cloud_inside(path ,obj, grid_size,tolerance=0.05):
 
 if __name__ == '__main__':
     
-    num_image = 50
+    num_image = 5
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
     
     #get the working directory
     BASE_DIR, STL_DIR, all_STL = get_dir_file_path()
-    
     
     if not os.path.exists(BASE_DIR.joinpath('data')):
         os.chdir(BASE_DIR)
@@ -521,6 +605,7 @@ if __name__ == '__main__':
     add_mesh('custom_stl',1,(0,0,0),(0.1,0.1,0.1),all_STL[3])
     add_camera(location = (15,0,0),rotation = (0,0,0))
     
+
     #save intrinsics
     cam = bpy.data.cameras["Camera"]
     cam = bpy.context.object.data
@@ -528,16 +613,15 @@ if __name__ == '__main__':
     
     #selet object
     obj = bpy.data.objects['small B']
-    cam_locs = generate_cam_x_y(radius = 2,level = 5,center = (1.5,0,0),num_loc = num_image)
+    cam_locs = generate_cam_x_y(radius = 2,level = 6,center = (2,0,0),num_loc = num_image)
     
     #duplicate
-    duplicate_obj(obj)
-    bpy.context.view_layer.update()
-    
-    obj_copy =bpy.data.objects['small B.001']
+    obj_copy = duplicate_obj(obj)
+#    bpy.context.view_layer.update()
+        
+#    obj_copy = bpy.data.objects['small B.001']
     obj_camera = bpy.data.objects["Camera"]
-    
-    
+       
     
 #    point_cloud_inside(BASE_DIR,obj_copy,grid_size = 0.1)
             
@@ -545,8 +629,8 @@ if __name__ == '__main__':
         
         #rotate object and save object pose
         angle = np.random.uniform(0,1) * 360
-        mat = transform_and_save(BASE_DIR,num,obj,angle = angle,location = (3,0,0))
-             
+        mat = transform_and_save(BASE_DIR,num,obj,angle = angle,translation = (3.5,0,0.3))
+        
         #change camera location
         obj_camera.location = cam_locs[num,:]
         bpy.context.view_layer.update()
@@ -558,18 +642,16 @@ if __name__ == '__main__':
         #select the camera
         bpy.context.scene.camera = bpy.context.object
         
-        
         #save image
         save_image(BASE_DIR,rgb = True, depth = True)
         
+        #delete unnecessary objects
+        o = bpy.data.objects['Bounding_Mesh']
+        bpy.data.objects.remove(o, do_unlink=True)
+        o = bpy.data.objects['small B.002']
+        bpy.data.objects.remove(o, do_unlink=True)
         
-        print('before',obj.matrix_world @ list(obj.data.vertices)[0].co)
-        
-        #reset obj pose
-        Matrix.invert(mat)
-        obj.matrix_world =  mat @ obj.matrix_world 
-        
-        print('after',obj.matrix_world @ list(obj.data.vertices)[0].co)
+
         
         
         

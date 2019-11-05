@@ -30,7 +30,7 @@ def main():
     optimizer = tf.keras.optimizers.Adam(1e-4)
     from_scratch = True
 
-    
+    generatorgenerator
     BASE_DIR = PH.Path(__file__).parent.parent
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')
     
@@ -52,7 +52,7 @@ def main():
 
         #load correspondence and tsdf_volume
         tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(2)
-        Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = 0.2,from_scratch = from_scratch)
+        Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = 0.5,from_scratch = from_scratch)
 
         # Model.save_parameter(weights_path)
     
