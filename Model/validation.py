@@ -24,6 +24,7 @@ def main():
     # if FLAGS.age is not None:
     #     pass
     data = dataset()
+    data.x_y_split(random_seed = 0)
     from_scratch = False
     optimizer = tf.keras.optimizers.Adam()
 
@@ -45,9 +46,8 @@ def main():
     for i in range(steps):
 
         #load correspondence and tsdf_volume
-        tsdf_volume_batch,correspondence_batch = data.generate_data(1)
-        
-        # print(Model(tsdf_volume_batch))
+        tsdf_volume_test_batch,correspondence_test_batch = data.generate_test_data_batch(1)
+        print(Model(tsdf_volume_test_batch).numpy)
 
 
 

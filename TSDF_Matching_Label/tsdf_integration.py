@@ -300,7 +300,7 @@ def meshwrite(filename,verts,faces,norms,colors):
 
     ply_file.close()
 
-def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 3):
+def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 5):
 
     '''
     test if 3d points transform to pxiel is correct

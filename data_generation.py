@@ -9,6 +9,8 @@ import numpy as np
 import os
 from math import pi, acos
 from io_mesh_ply import import_ply
+from space_view3d_point_cloud_visualizer import PCVControl
+
 
 
     
@@ -78,14 +80,14 @@ def reset_all():
     scene.view_settings.view_transform = 'Raw'
     scene.sequencer_colorspace_settings.name = 'Raw'
 
-
-
     #change location
     light_object.location = (4, 4, 10)
 
     # update scene, if needed
     dg = bpy.context.evaluated_depsgraph_get() 
     dg.update()
+    
+
     
 def add_mesh(shape,size,location,scale,path = None):
     '''
@@ -264,7 +266,7 @@ def save_image(BASE_DIR,rgb = True, depth = True):
         g_depth_file_format = 'PNG'
 
 
-
+        print('hahahahhah',bpy.context.object)
         map_value_node.size[0] = 1/ bpy.context.object.data.clip_end
         
         depth_file_output_node.format.color_mode = g_depth_color_mode
@@ -317,8 +319,8 @@ def create_rect(obj,translation):
     min_x,min_y,min_z = np.min(bounding_points[:,0]),np.min(bounding_points[:,1]),np.min(bounding_points[:,2])
     max_x,max_y,max_z = np.max(bounding_points[:,0]),np.max(bounding_points[:,1]),np.max(bounding_points[:,2])
     
-    min_x = min_x + translation[0] - 1.5
-    max_x = max_x + translation[0] + 0.5
+    min_x = min_x + translation[0] - 1.2
+    max_x = max_x + translation[0] + 0.2
     
     min_y = min_y + translation[1] - 0.6
     max_y = max_y + translation[1] + 0.6
@@ -376,9 +378,9 @@ def transform_and_save(path,num,obj,angle,translation = (3,0,0)):
     mat = trans_mat @ rot_mat
     
     #record vertices
-    vertics = np.zeros((len(obj.data.vertices),3))
-    for i,vert in enumerate(obj.data.vertices):
-        vertics[i,:] = obj_placeholder.matrix_world @ vert.co
+#    vertics = np.zeros((len(obj.data.vertices),3))
+#    for i,vert in enumerate(obj.data.vertices):
+#        vertics[i,:] = obj_placeholder.matrix_world @ vert.co
     obj_placeholder.matrix_world = mat @ obj_placeholder.matrix_world
     
     Bounding_Mesh = create_rect(obj,translation)
@@ -397,11 +399,11 @@ def transform_and_save(path,num,obj,angle,translation = (3,0,0)):
     context.collection.objects.unlink(obj_placeholder)    
      
     save_path_npy = str(path.joinpath('data').joinpath('frame-object-{:06}.pose.npy'.format(num)))
-    save_path_npy_vertices = str(path.joinpath('data').joinpath('frame-object-{:06}.vertices.npy'.format(num)))
+#    save_path_npy_vertices = str(path.joinpath('data').joinpath('frame-object-{:06}.vertices.npy'.format(num)))
     
     #scale with trans and rot
     np.save(save_path_npy,np.array(mat))
-    np.save(save_path_npy_vertices,vertics)
+#    np.save(save_path_npy_vertices,vertics)
     
     return mat
 
@@ -410,7 +412,7 @@ def get_sensor_size(sensor_fit, sensor_x, sensor_y):
         return sensor_y
     return sensor_x
 
-# BKE_camera_sensor_fit
+
 def get_sensor_fit(sensor_fit, size_x, size_y):
     if sensor_fit == 'AUTO':
         if size_x >= size_y:
@@ -445,84 +447,10 @@ def get_3x4_RT_matrix(path,cam,iteration):
     print(RT)
     RT_path = str(path.joinpath('data').joinpath('frame-camera-{:06}.RT.npy'.format(iteration)))
     np.save(RT_path ,RT)
-
-
-#def point_cloud_inside(obj,grid_size, max_dist = 1.84467e+19):
-#    
-#    bound_box = np.array(obj.bound_box)
-#    bounding_points = (np.array(obj.matrix_world)[:3,:3] @ bound_box.T).T
-#    
-#    min_x,min_y,min_z = np.min(bounding_points[:,0]),np.min(bounding_points[:,1]),np.min(bounding_points[:,2])
-#    max_x,max_y,max_z = np.max(bounding_points[:,0]),np.max(bounding_points[:,1]),np.max(bounding_points[:,2])
-#        
-#    xyz = np.mgrid[min_x:max_x:grid_size, min_y:max_y:grid_size, min_z:max_z:grid_size]  
-#    points = np.reshape(xyz,[3,-1],order = 'C').T
-#    valid_pix = np.zeros((points.shape[0],), dtype=bool)
-#    
-#    print(points.shape)
-#    print(valid_pix.shape)
-#    
-#    
-#    
-#    for i,p in enumerate(points):
-#        _,point, normal, face = obj.closest_point_on_mesh(Vector(p))
-#        print(point,p)
-#        p2 = point-Vector(p)
-#        v = p2.dot(normal)
-#        valid_pix[i] = not(v < 0.0)
-#        
-#    print(np.sum(valid_pix))
+        
+def save_load_ply_file(path,points, in_side_px,load_ply = False):
     
-
-
-
-
-def point_cloud_inside(path ,obj, grid_size,tolerance=0.05):
-
-    print(path)
     TEST_DIR = path.joinpath('test')
-    CUR_PLT_DIR = path.joinpath('env').joinpath('tsdf_projected_ply')
-    ply_list = [str(item) for item in CUR_PLT_DIR.glob('**/*.ply')]
-    
-    if not os.path.exists(str(TEST_DIR)):
-        os.mkdir(TEST_DIR)
-
-    bound_box = np.array(obj.bound_box)
-    bounding_points = (np.array(obj.matrix_world)[:3,:3] @ bound_box.T).T
-    
-    min_x,min_y,min_z = np.min(bounding_points[:,0]),np.min(bounding_points[:,1]),np.min(bounding_points[:,2])
-    max_x,max_y,max_z = np.max(bounding_points[:,0]),np.max(bounding_points[:,1]),np.max(bounding_points[:,2])
-        
-    xyz = np.mgrid[min_x:max_x:grid_size, min_y:max_y:grid_size, min_z:max_z:grid_size]  
-    points = np.reshape(xyz,[3,-1],order = 'C').T
-    
-    valid_pix = np.zeros((points.shape[0],), dtype=bool)
-    
-    for idx,point in enumerate(points):
-        # Convert the point from global space to mesh local space
-        target_pt_local = obj.matrix_world.inverted() @ Vector(point)
-
-        # Find the nearest point on the mesh and the nearest face normal
-        _, pt_closest, face_normal, _ = obj.closest_point_on_mesh(point)
-
-        # Get the target-closest pt vector
-        target_closest_pt_vec = (pt_closest - target_pt_local).normalized()
-
-        # Compute the dot product = |a||b|*cos(angle)
-        dot_prod = target_closest_pt_vec.dot(face_normal)
-
-        # Get the angle between the normal and the target-closest-pt vector (from the dot prod)
-        angle = acos(min(max(dot_prod, -1), 1)) * 180 / pi
-
-        # Allow for some rounding error
-        inside = angle < 90-tolerance
-        valid_pix[idx] = inside
-        
-        
-    
-    
-    print(valid_pix[:50])
-    
     grid = str(TEST_DIR.joinpath('grid.ply'))
     ply_file = open(grid,'w')
     ply_file.write("ply\n")
@@ -537,60 +465,75 @@ def point_cloud_inside(path ,obj, grid_size,tolerance=0.05):
     ply_file.write("property uchar red\n")
     ply_file.write("property uchar green\n")
     ply_file.write("property uchar blue\n")
-#    ply_file.write("element face %d\n"%(faces.shape[0]))
-#    ply_file.write("property list uchar int vertex_index\n")
     ply_file.write("end_header\n")
 
-    # Write vertex list
     for i in range(points.shape[0]):
-        if valid_pix[i] == True:
+        if in_side_px[i] == True:
             ply_file.write("%f %f %f %f %f %f %d %d %d\n"%(points[i,0],points[i,1],points[i,2],0,0,0,0,0,0))
         else:
             ply_file.write("%f %f %f %f %f %f %d %d %d\n"%(points[i,0],points[i,1],points[i,2],0,0,0,255,0,0))
-    # Write face list
-#    for i in range(faces.shape[0]):
-#        ply_file.write("3 %d %d %d\n"%(faces[i,0],faces[i,1],faces[i,2]))
 
     ply_file.close()
+    if load_ply:
+        import_ply.load_ply(grid)
     
-    import_ply.load_ply(grid)
 
+
+def point_cloud_inside(path ,obj, grid_size, scale,tolerance=0.05):
     
-    print(np.sum(valid_pix))
+    c = PCVControl(obj)
 
+    print(path)
+    TEST_DIR = path.joinpath('test')
+    CUR_PLT_DIR = path.joinpath('env').joinpath('tsdf_projected_ply')
+    ply_list = [str(item) for item in CUR_PLT_DIR.glob('**/*.ply')]
+    
+    if not os.path.exists(str(TEST_DIR)):
+        os.mkdir(TEST_DIR)
 
-#def withinMesh(grid_size,obj):
-#    axes = [ mathutils.Vector((1,0,0)) , mathutils.Vector((0,1,0)), mathutils.Vector((0,0,1))]
-#    bound_box = np.array(obj.bound_box)
-#    bounding_points = (np.array(obj.matrix_world)[:3,:3] @ bound_box.T).T
-#    
-#    min_x,min_y,min_z = np.min(bounding_points[:,0]),np.min(bounding_points[:,1]),np.min(bounding_points[:,2])
-#    max_x,max_y,max_z = np.max(bounding_points[:,0]),np.max(bounding_points[:,1]),np.max(bounding_points[:,2])
-#        
-#    xyz = np.mgrid[min_x:max_x:grid_size, min_y:max_y:grid_size, min_z:max_z:grid_size]  
-#    points = np.reshape(xyz,[3,-1],order = 'C').T
-#    point = mathutils.Vector((x,y,z))
-#    outside = False
-#    mat = mesh.matrix_world.copy()
-#    mat.invert()
-#    for axis in axes:
-#        orig = mat @ point
-#        count = 0
-#        while True:
-#            result,location,normal,index = mesh.ray_cast(orig,orig+axis*10000.0)
-#            if index == -1: break
-#            count += 1
-#            orig = location + axis*0.00001
-#        if count%2 == 0:
-#            outside = True
-#            break
-#    
-#    return not outside
+    bound_box = np.array(obj.bound_box)
+    bounding_points = (np.array(obj.matrix_world)[:3,:3] @ bound_box.T).T
+    
+    shift = 0.01
+    
+    min_x,min_y,min_z = np.min(bounding_points[:,0]) - shift,np.min(bounding_points[:,1]) - shift,np.min(bounding_points[:,2]) - shift 
+    max_x,max_y,max_z = np.max(bounding_points[:,0]) - shift,np.max(bounding_points[:,1]) - shift,np.max(bounding_points[:,2]) - shift
+        
+    xyz = np.mgrid[min_x:max_x:grid_size, min_y:max_y:grid_size, min_z:max_z:grid_size]  
+    points = np.reshape(xyz,[3,-1],order = 'C').T
+    
+    in_side_px = np.zeros((points.shape[0],), dtype=bool)
+    for idx,point in enumerate(points):
+        
+        target_pt_local = obj.matrix_world.inverted() @ Vector(point)
+        _, pt_closest, face_normal, _ = obj.closest_point_on_mesh(point / 0.1)
+        target_closest_pt_vec = (pt_closest - target_pt_local).normalized()
+        dot_prod = target_closest_pt_vec.dot(face_normal)
+        in_side_px[idx] = not(dot_prod < 0)
+        
+    save_load_ply_file(path,points / scale,in_side_px)
+    print('total_points_inside', np.sum(in_side_px))
+    return points[in_side_px,:]
+
+def save_vertices_inside_pts(path,obj,inside_pts):
+    
+    #record the vertices
+    vertics = np.zeros((len(obj.data.vertices),3))
+    for i,vert in enumerate(obj.data.vertices):
+        vertics[i,:] = obj.matrix_world @ vert.co
+    
+    save_path_npy_inside_pts = str(path.joinpath('data').joinpath('frame-object.inside_pts.npy'))
+    save_path_npy_vertices = str(path.joinpath('data').joinpath('frame-object.vertices.npy'))
+    
+    np.save(save_path_npy_inside_pts,inside_pts)
+    np.save(save_path_npy_vertices,vertics)
+    
+    
 
 
 if __name__ == '__main__':
     
-    num_image = 5
+    num_image = 2
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
     
@@ -604,7 +547,7 @@ if __name__ == '__main__':
     #add custom stl file
     add_mesh('custom_stl',1,(0,0,0),(0.1,0.1,0.1),all_STL[3])
     add_camera(location = (15,0,0),rotation = (0,0,0))
-    
+    scale = np.array((0.1,0.1,0.1))
 
     #save intrinsics
     cam = bpy.data.cameras["Camera"]
@@ -617,14 +560,16 @@ if __name__ == '__main__':
     
     #duplicate
     obj_copy = duplicate_obj(obj)
-#    bpy.context.view_layer.update()
-        
-#    obj_copy = bpy.data.objects['small B.001']
     obj_camera = bpy.data.objects["Camera"]
-       
+    bpy.context.view_layer.update()
+
+    #calculate points inside a mesh
+    pts_inside = point_cloud_inside(BASE_DIR,obj_copy,grid_size = 0.1,scale = scale)
     
-#    point_cloud_inside(BASE_DIR,obj_copy,grid_size = 0.1)
-            
+    #save vertices and points inside mesh
+    save_vertices_inside_pts(BASE_DIR,obj,pts_inside)
+        
+    
     for num in range(num_image):
         
         #rotate object and save object pose

@@ -17,12 +17,12 @@ class dataset(object):
         self._vol_dim = np.load(vol_path)
         # self._config = config
 
-    def x_y_split(self):
+    def x_y_split(self,random_seed = 0):
 
         self._tsdf_volume_list_train,\
         self._tsdf_volume_list_test,\
         self._correspondence_list_train,\
-        self._correspondence_list_test =train_test_split(self._tsdf_volume_list, self._correspondence_list, test_size=0.33, random_state=0)
+        self._correspondence_list_test =train_test_split(self._tsdf_volume_list, self._correspondence_list, test_size=0.33, random_state=random_seed)
         self.train_size = len(self._correspondence_list_train)
         self.test_size = len(self._correspondence_list_test)
 
@@ -50,6 +50,30 @@ class dataset(object):
 
         return volume,match,non_matches
 
+    def generate_test_data_batch(self,batch_size = 1):
+        #update pointer
+        if batch_size == 0:
+            raise Exception('batch_size need to be greater than 0')
+        if batch_size > self.data_size:
+            raise Exception('batch_size cannot be greater than total number of data')
+
+        self._pointer_end += batch_size
+        self._pointer_start = self._pointer_end - batch_size
+
+        if self._pointer_end >= self.test_size:
+            self._pointer_end = self.test_size
+
+        volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list_test[self._pointer_start:self._pointer_end]],axis = 0)
+
+        match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_test[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
+
+        non_matches = self.generate_non_matches(match)
+
+        if self._pointer_end >= self.test_size:
+            self._pointer_end = 0
+
+        return volume,match
+
     def generate_non_matches(self,match,margin = 5):
         non_matches_batch = np.zeros_like(match[:,:,:3])
 
@@ -68,17 +92,6 @@ class dataset(object):
         non_matches_batch = np.concatenate([match[:,:,:3],non_matches_batch],axis = 2)
 
         return non_matches_batch
-
-
-
-        
-
-
-
-
-
-
-
 
     @property
     def tsdf_volume_list(self):
@@ -103,9 +116,11 @@ class dataset(object):
    
 if __name__ == '__main__':
     data = dataset()
+    print(data._correspondence_list)
     # print(data.tsdf_volume_list)
     for i in range(1):
+        pass
         # x,y = data.generate_data()
-        x,y,y_c = data.generate_data(2)
-        print(y_c)
+        # x,y,y_c = data.generate_data(2)
+        # print(y_c)
         # print(x)
