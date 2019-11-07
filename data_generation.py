@@ -265,8 +265,6 @@ def save_image(BASE_DIR,rgb = True, depth = True):
         g_depth_color_depth = '16'
         g_depth_file_format = 'PNG'
 
-
-        print('hahahahhah',bpy.context.object)
         map_value_node.size[0] = 1/ bpy.context.object.data.clip_end
         
         depth_file_output_node.format.color_mode = g_depth_color_mode
@@ -483,7 +481,6 @@ def point_cloud_inside(path ,obj, grid_size, scale,tolerance=0.05):
     
     c = PCVControl(obj)
 
-    print(path)
     TEST_DIR = path.joinpath('test')
     CUR_PLT_DIR = path.joinpath('env').joinpath('tsdf_projected_ply')
     ply_list = [str(item) for item in CUR_PLT_DIR.glob('**/*.ply')]
@@ -533,7 +530,8 @@ def save_vertices_inside_pts(path,obj,inside_pts):
 
 if __name__ == '__main__':
     
-    num_image = 2
+    num_image = 60
+    print(list(bpy.data.objects))
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
     
@@ -564,7 +562,7 @@ if __name__ == '__main__':
     bpy.context.view_layer.update()
 
     #calculate points inside a mesh
-    pts_inside = point_cloud_inside(BASE_DIR,obj_copy,grid_size = 0.1,scale = scale)
+    pts_inside = point_cloud_inside(BASE_DIR,obj_copy,grid_size = 0.05,scale = scale)
     
     #save vertices and points inside mesh
     save_vertices_inside_pts(BASE_DIR,obj,pts_inside)

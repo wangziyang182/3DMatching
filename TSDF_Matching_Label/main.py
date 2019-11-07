@@ -1,4 +1,5 @@
 import numpy as np
+from Config import Config
 from skimage import measure
 import pathlib as PH
 import time

@@ -3,18 +3,21 @@ import os
 import numpy as np
 from Model import TDDD_Net
 from Data import dataset
-# from Config import config
+from Config import Config
+import shutil
 import pathlib as PH
 from Data import dataset
 from absl import flags
 from absl import app
-import shutil
+from absl import logging
+
 # flags = tf.compat.v1.flags.Flag
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('max_steps', 2000, 'Number of steps to run trainer.')
 flags.DEFINE_float('non_match_M', 1, 'cut_off of non_match')
-
+flags.DEFINE_integer('epoch', 10,'number of epoches to train')
 
 # def main(argv):
 
@@ -23,12 +26,23 @@ def main():
     #     print('non-flag arguments:', argv)
     # if FLAGS.age is not None:
     #     pass
-    data = dataset()
-    data.x_y_split()
 
-    steps = 30
-    optimizer = tf.keras.optimizers.Adam(1e-4)
-    from_scratch = True
+    #init parameter
+    config = Config()
+    batch_size = config.batch_size
+    epoch = config.epoch
+    optimizer = config.optimizer
+    from_scratch = config.from_scratch
+    random_seed = config.random_seed
+    num_match = config.num_match
+    num_non_match = config.num_non_match
+    non_match_margin = config.non_match_margin
+
+    data = dataset()
+    data.x_y_split(random_seed = random_seed)
+
+    steps = data.train_size * epoch
+    print('steps',steps)
 
     BASE_DIR = PH.Path(__file__).parent.parent
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')
@@ -41,17 +55,18 @@ def main():
     weights_path = str(MODEL_WEIGHTS_PATH.joinpath('ckpt'))
 
 
-
     # define Matching Net
     Model = TDDD_Net()
     Model.optimizer = optimizer
     Model.create_ckpt_manager(weights_path)
-   
-    for i in range(steps):
 
+
+   
+    # for i in range(steps):
+    for i in range(1):
         #load correspondence and tsdf_volume
-        tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(1)
-        Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = 0.5,from_scratch = from_scratch)
+        tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size)
+        Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = non_match_margin,from_scratch = from_scratch)
 
         # Model.save_parameter(weights_path)
     

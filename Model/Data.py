@@ -26,7 +26,7 @@ class dataset(object):
         self.train_size = len(self._correspondence_list_train)
         self.test_size = len(self._correspondence_list_test)
 
-    def generate_train_data_batch(self,batch_size = 1):
+    def generate_train_data_batch(self,num_match, num_non_match,batch_size = 1):
         #update pointer
         if batch_size == 0:
             raise Exception('batch_size need to be greater than 0')
@@ -39,14 +39,30 @@ class dataset(object):
         if self._pointer_end >= self.train_size:
             self._pointer_end = self.train_size
 
+
         volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list_train[self._pointer_start:self._pointer_end]],axis = 0)
 
         match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_train[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
-
+        print(match.shape)
+        
         non_matches = self.generate_non_matches(match)
 
+        #random sample points
+        if num_match <= match.shape[1]:
+            match_sample_idx = np.random.choice(match.shape[1], size=num_match, replace=False)
+        else:
+            raise Exception('number of matching sampled cannot be greater than the total number of points inside a mesh')
+
+        if num_match <= non_matches.shape[1]:
+            non_match_sample_idx = np.random.choice(non_matches.shape[1], size=num_non_match, replace=False)
+        else:
+            raise Exception('number of non-matching sampled cannot be greater than the total number of points inside a mesh')
+
+        match = match[:,match_sample_idx,:]
+        non_matches = non_matches[:,non_match_sample_idx,:]
         if self._pointer_end >= self.train_size:
             self._pointer_end = 0
+
 
         return volume,match,non_matches
 

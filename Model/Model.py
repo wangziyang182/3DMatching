@@ -65,37 +65,52 @@ class TDDD_Net(tf.keras.Model):
 
     # @tf.function
     def compute_loss_gradient(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
-        dim_0_index = tf.range(match.shape[0])
-        dim_0_index = tf.keras.backend.repeat_elements(dim_0_index, rep=match.shape[1], axis=0)
-        dim_0_index = tf.reshape(dim_0_index,[match.shape[0],match.shape[1],1])
-        
-        dim_0_index = tf.dtypes.cast(dim_0_index,tf.int32)
+
+        dim_0_index_match = tf.range(match.shape[0])
+        dim_0_index_match = tf.keras.backend.repeat_elements(dim_0_index_match, rep=match.shape[1], axis=0)
+        dim_0_index_match = tf.reshape(dim_0_index_match,[match.shape[0],match.shape[1],1])
+        dim_0_index_match = tf.dtypes.cast(dim_0_index_match,tf.int32)
+
+
+        dim_0_index_non_match = tf.range(non_match.shape[0])
+        dim_0_index_non_match = tf.keras.backend.repeat_elements(dim_0_index_non_match, rep=non_match.shape[1], axis=0)
+        dim_0_index_non_match = tf.reshape(dim_0_index_non_match,[non_match.shape[0],non_match.shape[1],1])
+        dim_0_index_non_match = tf.dtypes.cast(dim_0_index_non_match,tf.int32)
+
         match = tf.dtypes.cast(match,tf.int32)
         non_match = tf.dtypes.cast(non_match,tf.int32)
 
-        vert_a = tf.concat([dim_0_index,match[:,:,:3]],axis = 2)
-        match_a = tf.concat([dim_0_index,match[:,:,3:6]],axis = 2)
-        non_match_a = tf.concat([dim_0_index,non_match[:,:,3:6]],axis = 2)
+        points = tf.concat([dim_0_index_match,match[:,:,:3]],axis = 2)
+        match_points = tf.concat([dim_0_index_match,match[:,:,3:6]],axis = 2)
+
+        points_ = tf.concat([dim_0_index_non_match,non_match[:,:,:3]],axis = 2)
+        non_match_points_ = tf.concat([dim_0_index_non_match,non_match[:,:,3:6]],axis = 2)
         
         with tf.GradientTape() as tape:
             print('\n' + 'forward_propogating' + '\n')
             voxel_descriptor = self.call(tsdf_volume)
-            descriptor_a = tf.gather_nd(voxel_descriptor, vert_a)
-            descriptor_match_a =  tf.gather_nd(voxel_descriptor, match_a)
-            descriptor_non_match_a = tf.gather_nd(voxel_descriptor, non_match_a)
+
+            #matching_descriptor
+            descriptor_points = tf.gather_nd(voxel_descriptor, points)
+            descriptor_match_points =  tf.gather_nd(voxel_descriptor, match_points)
+
+            #non_matching_descriptor
+            descriptor_points_ = tf.gather_nd(voxel_descriptor,points_)
+            descriptor_non_match_a = tf.gather_nd(voxel_descriptor, non_match_points_)
+
             #checking
-            # print(descriptor_a[0,1])
+            # print(descriptor_points[0,1])
             # print(voxel_descriptor[0,match[0,1,0],match[0,1,1],match[0,1,2]])
 
-            # print(descriptor_match_a[0,1])
+            # print(descriptor_match_points[0,1])
             # print(voxel_descriptor[0,match[0,1,3],match[0,1,4],match[0,1,5]])
 
-            # descriptor_match_a =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
-            match_l2_diff = tf.reduce_sum(tf.square(descriptor_a - descriptor_match_a) , axis = 2)
+            # descriptor_match_points =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
+            match_l2_diff = tf.reduce_sum(tf.square(descriptor_points - descriptor_match_points) , axis = 2)
 
             match_loss = tf.reduce_mean(tf.reduce_mean(match_l2_diff))
 
-            non_match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_a - descriptor_non_match_a) , axis = 2))
+            non_match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_points_ - descriptor_non_match_a) , axis = 2))
 
             hard_negatives = tf.greater((Non_March_Margin - non_match_l2_diff),0)
             hard_negatives = tf.cast(hard_negatives,tf.int32)
@@ -105,11 +120,11 @@ class TDDD_Net(tf.keras.Model):
 
             loss = match_loss + non_match_loss
             # loss = match_loss
-            print('match_loss',match_loss)
-            print('non_match_loss',non_match_loss)
-            print(match_l2_diff)
-            print(tf.sqrt(match_l2_diff))
-            print('hard_negatives',hard_negatives)
+            # print('match_loss',match_loss)
+            # print('non_match_loss',non_match_loss)
+            # print(match_l2_diff)
+            # print(tf.sqrt(match_l2_diff))
+            # print('hard_negatives',hard_negatives)
 
 
         print('\n' + 'backward_propogating' + '\n')
@@ -134,7 +149,7 @@ class TDDD_Net(tf.keras.Model):
 
     def train_and_checkpoint(self,tsdf_volume,match,non_match = None,Non_March_Margin = 0.1,from_scratch = True):
 
-        if from_scratch:
+        if not from_scratch:
             self.ckpt.restore(self.manager.latest_checkpoint)
             print("Restored from {}".format(self.manager.latest_checkpoint))
         else:
