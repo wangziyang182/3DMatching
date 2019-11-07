@@ -42,6 +42,7 @@ def main():
     data.x_y_split(random_seed = random_seed)
 
     steps = data.train_size * epoch
+    print('train_size',data.train_size)
     print('steps',steps)
 
     BASE_DIR = PH.Path(__file__).parent.parent
@@ -59,7 +60,6 @@ def main():
     Model = TDDD_Net()
     Model.optimizer = optimizer
     Model.create_ckpt_manager(weights_path)
-
 
    
     # for i in range(steps):

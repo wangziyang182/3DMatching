@@ -177,6 +177,7 @@ class TDDD_Net(tf.keras.Model):
     @optimizer.setter
     def optimizer(self,val):
         self._optimizer = val
+        
     # @property
     # def config(self):
     #     return self._config

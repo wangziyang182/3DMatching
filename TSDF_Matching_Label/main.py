@@ -1,6 +1,5 @@
 import numpy as np
 from Config import Config
-from skimage import measure
 import pathlib as PH
 import time
 import cv2
@@ -9,11 +8,16 @@ import os
 from tsdf_integration import TSDFVolume, draw_points,find_vertices_correspondence,world_to_voxel,meshwrite,view_geometry
 
 
+#init hyperparameter
+config = Config()
+
 #def nounds metric standard(meter)
-vol_bnds = np.array([[-1,5],[-2,2],[0,1]])
-voxel_size = 0.1
-n_imgs = 2
-multi_images = False
+vol_bnds = config.vol_bnds
+#voxel size in terms of meter 
+voxel_size = config.voxel_size
+n_imgs = config.n_imgs
+#single or mutiple images for tsdf_fusion
+multi_images = config.multi_images
 
 
 

@@ -43,7 +43,6 @@ class dataset(object):
         volume = np.concatenate([np.load(x)[None,...,None] for x in self._tsdf_volume_list_train[self._pointer_start:self._pointer_end]],axis = 0)
 
         match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_train[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
-        print(match.shape)
         
         non_matches = self.generate_non_matches(match)
 
