@@ -15,7 +15,7 @@ class Config(object):
         self._from_scratch = True
         ##Random Seed for trian test split
         self._random_seed = 0 
-        self._epoch = 1  
+        self._epoch = 10  
 
 
 

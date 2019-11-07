@@ -63,7 +63,7 @@ class TDDD_Net(tf.keras.Model):
         return tensor
         
 
-    # @tf.function
+    @tf.function
     def compute_loss_gradient(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
 
         dim_0_index_match = tf.range(match.shape[0])

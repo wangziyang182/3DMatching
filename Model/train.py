@@ -10,6 +10,7 @@ from Data import dataset
 from absl import flags
 from absl import app
 from absl import logging
+from tqdm import tqdm
 
 # flags = tf.compat.v1.flags.Flag
 
@@ -40,12 +41,10 @@ def main():
 
     data = dataset()
     data.x_y_split(random_seed = random_seed)
-
-    steps = data.train_size * epoch
-    print('train_size',data.train_size)
-    print('steps',steps)
-
-    BASE_DIR = PH.Path(__file__).parent.parent
+    
+    steps_per_epoch = data.train_size // batch_size + 1
+    
+    BASE_DIR = PH.Path(__file__).absolute().parent.parent
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')
     
     if from_scratch:
@@ -62,11 +61,12 @@ def main():
     Model.create_ckpt_manager(weights_path)
 
    
-    # for i in range(steps):
-    for i in range(1):
-        #load correspondence and tsdf_volume
-        tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size)
-        Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = non_match_margin,from_scratch = from_scratch)
+    for i in range(epoch):
+        print('epoch',i)
+        for j in tqdm(range(data.train_size // batch_size + 1)):
+            #load correspondence and tsdf_volume
+            tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size)
+            Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = non_match_margin,from_scratch = from_scratch)
 
         # Model.save_parameter(weights_path)
     
