@@ -13,9 +13,16 @@ In this project, we learned dense voxel-space descriptor by porjecting single RG
 * scikit-learn == 0.21.3  
 * tqdm == 4.36.1 
 
-For blender download please visit blender [offical website][]
+For blender download please visit blender [offical website].
 
-## Usage example
+## Usage
+* Mesh files are in the env/mesh folder
+* When processing mesh files you can either open the blender, open data_gen.py file, and run the script. Or you can run the script in command line 
+
+'''
+where the script is ...
+'''
+* 
 
 A few motivating and useful examples of how your product can be used. Spice this up with code blocks and potentially more screenshots.
 
