@@ -13,7 +13,7 @@ In this project, we learned dense voxel-space descriptor by porjecting single RG
 * scikit-learn == 0.21.3  
 * tqdm == 4.36.1 
 
-
+For blender download please visit this site
 
 ## Usage example
 
