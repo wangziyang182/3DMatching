@@ -1,5 +1,5 @@
 # 3DMatching via Dense Voxel-Wise Descriptor in Tensroflow
-> In this project, we learned dense voxel-space descriptor by porjecting single RGB-D image to TSDF(truncated signed distance function) volume. Ground truth label is acquired through blender where object pose, camera matrices are recorded.
+In this project, we learned dense voxel-space descriptor by porjecting single RGB-D image to TSDF(truncated signed distance function) volume. Ground truth label is acquired through blender where object pose, camera matrices are recorded.
 
 ![](header.png)
 
