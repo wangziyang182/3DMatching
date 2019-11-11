@@ -1,14 +1,10 @@
 # 3DMatching via Dense Voxel-Wise Descriptor in Tensroflow
 > In this project, we learned dense voxel-space descriptor by porjecting single RGB-D image to TSDF(truncated signed distance function) volume. Ground truth label is acquired through blender where object pose, camera matrices are recorded.
 
-[![NPM Version][npm-image]][npm-url]
-[![Build Status][travis-image]][travis-url]
-[![Downloads Stats][npm-downloads]][npm-url]
-
-
 ![](header.png)
 
 ## Prerequisites
+* Blender 2.8
 * Python > 3.6.4
 * Tensorflow == 2.0
 * numpy == 1.17.2             
@@ -16,6 +12,7 @@
 * Open3d == 0.8.0.0
 * scikit-learn == 0.21.3  
 * tqdm == 4.36.1 
+
 
 
 ## Usage example
@@ -33,20 +30,7 @@ make install
 npm test
 ```
 
-## Release History
 
-* 0.2.1
-    * CHANGE: Update docs (module code remains unchanged)
-* 0.2.0
-    * CHANGE: Remove `setDefaultXYZ()`
-    * ADD: Add `init()`
-* 0.1.1
-    * FIX: Crash when calling `baz()` (Thanks @GenerousContributorName!)
-* 0.1.0
-    * The first proper release
-    * CHANGE: Rename `foo()` to `bar()`
-* 0.0.1
-    * Work in progress
 
 ## Meta
 
