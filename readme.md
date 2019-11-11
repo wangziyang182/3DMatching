@@ -19,10 +19,29 @@ For blender download please visit blender [offical website].
 * Mesh files are in the env/mesh folder
 * When processing mesh files you can either open the blender, open data_gen.py file, and run the script. Or you can run the script in command line 
 
-'''
+```
 where the script is ...
-'''
-* 
+```
+* The script will give you object pose, camera pose, camera intrinsic matrix, and the RGB-D images of objects and its corresponding packages. Below is a example of objects and its corresponding package and visualiztion of the matching in on the image level.
+
+[photo]
+
+* Run the following command to acquire TSDF volume and correspondence between object and packages. Configuration can be find in the config file.
+```
+python ./TSDF_Matching_Label/main.py
+```
+** Below is the example of the reconstrucuted volume from TSDF and its corresponding matching in 3d space
+
+[png]
+** All the point is sampled within the body mesh from dense point cloud grid. Below is the visualization of the point cloud grid. 
+[png]
+* To train the model run the following command.
+```
+python ./Model/train.py
+```
+Model weights will be saved for future testing purpose
+
+
 
 A few motivating and useful examples of how your product can be used. Spice this up with code blocks and potentially more screenshots.
 
