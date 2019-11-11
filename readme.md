@@ -30,10 +30,10 @@ where the script is ...
 ```
 python ./TSDF_Matching_Label/main.py
 ```
-** Below is the example of the reconstrucuted volume from TSDF and its corresponding matching in 3d space
+  * Below is the example of the reconstrucuted volume from TSDF and its corresponding matching in 3d space
 
 [png]
-** All the point is sampled within the body mesh from dense point cloud grid. Below is the visualization of the point cloud grid. 
+  * All the point is sampled within the body mesh from dense point cloud grid. Below is the visualization of the point cloud grid. 
 [png]
 * To train the model run the following command.
 ```
