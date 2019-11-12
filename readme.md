@@ -32,16 +32,13 @@ python ./TSDF_Matching_Label/main.py
 ```
   * Below is the example of the reconstrucuted volume from TSDF and its corresponding matching in 3d space
 
-[png]
+![png](figs/Voxel_Space_Matching.png)
   * All the point is sampled within the body mesh from dense point cloud grid. Below is the visualization of the point cloud grid. 
-[png]
+![png](figs/point_in_mesh.png)
 * To train the model run the following command.
 ```
 python ./Model/train.py
 ```
-Model weights will be saved for future testing purpose
-
-
 
 A few motivating and useful examples of how your product can be used. Spice this up with code blocks and potentially more screenshots.
 
