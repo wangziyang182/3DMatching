@@ -17,10 +17,10 @@ For blender download please visit blender [offical website].
 
 ## Usage
 * Mesh files are in the env/mesh folder
-* When processing mesh files you can either open the blender, open data_gen.py file, and run the script. Or you can run the script in command line 
+* When processing mesh files you can follow the command blow. If you install blender in different path, then use your own blender path. 
 
 ```
-where the script is ...
+/Applications/Blender.app/Contents/MacOS/Blender --background --python data_generation.py
 ```
 * The script will give you object pose, camera pose, camera intrinsic matrix, and the RGB-D images of objects and its corresponding packages. Below is a example of objects and its corresponding package and visualiztion of the matching in on the image level.
 
