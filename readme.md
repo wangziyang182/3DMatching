@@ -24,7 +24,9 @@ where the script is ...
 ```
 * The script will give you object pose, camera pose, camera intrinsic matrix, and the RGB-D images of objects and its corresponding packages. Below is a example of objects and its corresponding package and visualiztion of the matching in on the image level.
 
-[photo]
+![png](/figs/object_package.png)
+
+![png](/figs/RGB-D_Matching.png)
 
 * Run the following command to acquire TSDF volume and correspondence between object and packages. Configuration can be find in the config file.
 ```
