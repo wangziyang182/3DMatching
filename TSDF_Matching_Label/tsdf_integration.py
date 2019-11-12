@@ -300,7 +300,7 @@ def meshwrite(filename,verts,faces,norms,colors):
 
     ply_file.close()
 
-def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 5):
+def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 10):
 
     '''
     test if 3d points transform to pxiel is correct
@@ -317,7 +317,6 @@ def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 5):
 
     img = cv2.imread(str(path),cv2.IMREAD_COLOR)
     index = np.random.choice(len(vertices_a),num_pts,replace = False)
-
     for item in cam_pix_a[index,:]:
         cv2.circle(img,(item[0],item[1]), 1, (0,255,0), -1)
     for item in cam_pix_b[index,:]:
@@ -325,12 +324,12 @@ def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 5):
 
     for i in range(cam_pix_a[index,:].shape[0]):
         lineThickness = 1
-        cv2.line(img, (cam_pix_a[i,0], cam_pix_a[i,1]), (cam_pix_b[i,0], cam_pix_b[i,1]), (0,255,0), lineThickness)
+        cv2.line(img, (cam_pix_a[index[i],0], cam_pix_a[index[i],1]), (cam_pix_b[index[i],0], cam_pix_b[index[i],1]), (0,255,0), lineThickness)
         
         cv2.imshow('img',img)
     cv2.waitKey()
 
-def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 3):
+def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
     pcd = o3d.io.read_point_cloud(ply_path)
     
     #random sample

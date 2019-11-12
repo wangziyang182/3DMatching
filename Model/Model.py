@@ -63,8 +63,8 @@ class TDDD_Net(tf.keras.Model):
         return tensor
         
 
-    @tf.function
-    def compute_loss_gradient(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
+    # @tf.function
+    def compute_loss(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
 
         dim_0_index_match = tf.range(match.shape[0])
         dim_0_index_match = tf.keras.backend.repeat_elements(dim_0_index_match, rep=match.shape[1], axis=0)
@@ -147,15 +147,15 @@ class TDDD_Net(tf.keras.Model):
         self.ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=self.optimizer, net=self)
         self.manager = tf.train.CheckpointManager(self.ckpt, weights_path, max_to_keep=3)
 
-    def train_and_checkpoint(self,tsdf_volume,match,non_match = None,Non_March_Margin = 0.1,from_scratch = True):
+    def train_and_checkpoint(self,tsdf_volume,match,non_match = None,non_Match_Margin = 0.1,from_scratch = True):
 
         if not from_scratch:
-            self.ckpt.restore(self.manager.latest_checkpoint)
+            self.restore()
             print("Restored from {}".format(self.manager.latest_checkpoint))
         else:
             print("Initializing from scratch.")
 
-        loss = self.compute_loss_gradient(tsdf_volume,match,non_match,Non_March_Margin)
+        loss = self.compute_loss(tsdf_volume,match,non_match,Non_March_Margin)
 
 
         self.ckpt.step.assign_add(1)
@@ -166,7 +166,7 @@ class TDDD_Net(tf.keras.Model):
             print("loss {:1.2f}".format(loss.numpy()))
     
     def restore(self):
-        self.ckpt.restore(self.manager.latest_checkpoint)
+        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
 
 
     # def 
@@ -177,7 +177,7 @@ class TDDD_Net(tf.keras.Model):
     @optimizer.setter
     def optimizer(self,val):
         self._optimizer = val
-        
+
     # @property
     # def config(self):
     #     return self._config

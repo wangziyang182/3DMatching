@@ -43,25 +43,25 @@ def main():
 
     steps = 1
 
+    x_point_idx = 1
+    y_point_idx = 1
+
     for i in range(steps):
 
         #load correspondence and tsdf_volume
-        tsdf_volume_test_batch,correspondence_test_batch,_ = data.generate_train_data_batch(10,10,1)
+        tsdf_volume_test_batch,correspondence_test_batch = data.generate_test_data_batch(1)
         descriptor = Model(tsdf_volume_test_batch).numpy()
 
-        x = correspondence_test_batch[0,9,:][:3]
-        y = correspondence_test_batch[0,9,:][3:]
+        print(descriptor.shape)
 
-        print(correspondence_test_batch.shape)
-
-        print('y',y)
+        x = correspondence_test_batch[0,x_point_idx,:][:3]
+        y = correspondence_test_batch[0,y_point_idx,:][3:]
 
         x_de = descriptor[0,x[0],x[1],x[2]]
         y_de = descriptor[0,y[0],y[1],y[2]]
 
         print('diff',np.sqrt(np.sum((x_de - y_de) ** 2)))
 
-        print()
 
 
 if __name__ == '__main__':

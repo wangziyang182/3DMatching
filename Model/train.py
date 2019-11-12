@@ -38,6 +38,7 @@ def main():
     num_match = config.num_match
     num_non_match = config.num_non_match
     non_match_margin = config.non_match_margin
+    non_match_distance_clip = config.non_match_distance_clip
 
     data = dataset()
     data.x_y_split(random_seed = random_seed)
@@ -48,7 +49,10 @@ def main():
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')
     
     if from_scratch:
-        shutil.rmtree(str(MODEL_WEIGHTS_PATH))
+        try:
+            shutil.rmtree(str(MODEL_WEIGHTS_PATH))
+        except:
+            pass
 
     if not os.path.exists(str(MODEL_WEIGHTS_PATH)):
         os.mkdir(str(MODEL_WEIGHTS_PATH))
@@ -65,8 +69,8 @@ def main():
         print('epoch',i)
         for j in tqdm(range(data.train_size // batch_size + 1)):
             #load correspondence and tsdf_volume
-            tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size)
-            Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_March_Margin = non_match_margin,from_scratch = from_scratch)
+            tsdf_volume_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size,non_match_distance_clip)
+            Model.train_and_checkpoint(tsdf_volume_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_Match_Margin = non_match_margin,from_scratch = from_scratch)
 
         # Model.save_parameter(weights_path)
     

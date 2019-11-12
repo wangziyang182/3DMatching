@@ -26,7 +26,7 @@ class dataset(object):
         self.train_size = len(self._correspondence_list_train)
         self.test_size = len(self._correspondence_list_test)
 
-    def generate_train_data_batch(self,num_match, num_non_match,batch_size = 1):
+    def generate_train_data_batch(self,num_match, num_non_match,batch_size = 1,Non_Match_Distance_Clip = 5):
         #update pointer
         if batch_size == 0:
             raise Exception('batch_size need to be greater than 0')
@@ -44,7 +44,7 @@ class dataset(object):
 
         match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_train[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
         
-        non_matches = self.generate_non_matches(match)
+        non_matches = self.generate_non_matches(match,Non_Match_Distance_Clip)
 
         #random sample points
         if num_match <= match.shape[1]:
@@ -89,7 +89,7 @@ class dataset(object):
 
         return volume,match
 
-    def generate_non_matches(self,match,margin = 5):
+    def generate_non_matches(self,match,Non_Match_Distance_Clip = 5):
         non_matches_batch = np.zeros_like(match[:,:,:3])
 
         for i,batch in enumerate(match):
@@ -100,7 +100,7 @@ class dataset(object):
                 y = np.random.randint(0,self._vol_dim[1])
                 z = np.random.randint(0,self._vol_dim[2])
                 non_match = np.array([x,y,z])
-                if np.sum((vert - non_match) ** 2) ** 0.5 > margin:
+                if np.sum((vert - non_match) ** 2) ** 0.5 > Non_Match_Distance_Clip:
                     non_matches[j,:] = non_match
 
             non_matches_batch[i] = non_matches
@@ -128,14 +128,4 @@ class dataset(object):
     def tsdf_volume_list(self,value):
         self._tsdf_volume_list = value
    
-   
-if __name__ == '__main__':
-    data = dataset()
-    print(data._correspondence_list)
-    # print(data.tsdf_volume_list)
-    for i in range(1):
-        pass
-        # x,y = data.generate_data()
-        # x,y,y_c = data.generate_data(2)
-        # print(y_c)
-        # print(x)
+
