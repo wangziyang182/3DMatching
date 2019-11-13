@@ -28,14 +28,14 @@ class TDDD_Net(tf.keras.Model):
             self.pool_3d_l4 = tf.keras.layers.AveragePooling3D()
 
         with tf.name_scope("Layer_5") as scope:
-            self.conv_3d_l5 = tf.keras.layers.Conv3DTranspose(filters = 64,kernel_size=[3,3,2],strides = [1,1,1],data_format="channels_last",activation = 'relu')
+            self.conv_3d_l5_T = tf.keras.layers.Conv3DTranspose(filters = 64,kernel_size=[3,3,2],strides = [1,1,1],data_format="channels_last",activation = 'relu')
             self.conv_3d_upool_l5 = tf.keras.layers.UpSampling3D()
 
         with tf.name_scope("Layer_6") as scope:
-            self.conv_3d_l6 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [3,3,2],strides = [1,1,1],data_format = "channels_last",activation = 'relu')
+            self.conv_3d_l6_T = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [3,3,2],strides = [1,1,1],data_format = "channels_last",activation = 'relu')
 
         with tf.name_scope("Layer_7") as scope:
-            self.conv_3d_l7 = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,4],strides = [1,1,1],data_format = "channels_last",activation = 'relu')
+            self.conv_3d_l7_T = tf.keras.layers.Conv3DTranspose(filters = 32,kernel_size = [5,5,4],strides = [1,1,1],data_format = "channels_last",activation = 'relu')
 
 
     def call(self,input_tensor):
@@ -53,18 +53,18 @@ class TDDD_Net(tf.keras.Model):
         tensor = self.batch_l4(tensor)
         tensor = self.pool_3d_l4(tensor)
 
-        tensor = self.conv_3d_l5(tensor)
+        tensor = self.conv_3d_l5_T(tensor)
         tensor = self.conv_3d_upool_l5(tensor)
 
-        tensor = self.conv_3d_l6(tensor)
+        tensor = self.conv_3d_l6_T(tensor)
 
-        tensor = self.conv_3d_l7(tensor)
+        tensor = self.conv_3d_l7_T(tensor)
 
         return tensor
         
 
     # @tf.function
-    def compute_loss(self,tsdf_volume,match,non_match = None,Non_March_Margin = 1):
+    def compute_loss(self,tsdf_volume_object,tsdf_volume_package,match,non_match = None,Non_March_Margin = 1):
 
         dim_0_index_match = tf.range(match.shape[0])
         dim_0_index_match = tf.keras.backend.repeat_elements(dim_0_index_match, rep=match.shape[1], axis=0)
@@ -87,25 +87,30 @@ class TDDD_Net(tf.keras.Model):
         non_match_points_ = tf.concat([dim_0_index_non_match,non_match[:,:,3:6]],axis = 2)
         
         with tf.GradientTape() as tape:
-            print('\n' + 'forward_propogating' + '\n')
-            voxel_descriptor = self.call(tsdf_volume)
+            # print('\n' + 'forward_propogating' + '\n')
+
+            voxel_descriptor_object = self.call(tsdf_volume_object)
+            voxel_descriptor_package = self.call(tsdf_volume_package)
+
+            print(voxel_descriptor_object.shape)
+            print(voxel_descriptor_package.shape)
 
             #matching_descriptor
-            descriptor_points = tf.gather_nd(voxel_descriptor, points)
-            descriptor_match_points =  tf.gather_nd(voxel_descriptor, match_points)
+            descriptor_points = tf.gather_nd(voxel_descriptor_object, points)
+            descriptor_match_points =  tf.gather_nd(voxel_descriptor_package, match_points)
 
             #non_matching_descriptor
-            descriptor_points_ = tf.gather_nd(voxel_descriptor,points_)
-            descriptor_non_match_a = tf.gather_nd(voxel_descriptor, non_match_points_)
+            descriptor_points_ = tf.gather_nd(voxel_descriptor_object,points_)
+            descriptor_non_match_a = tf.gather_nd(voxel_descriptor_package, non_match_points_)
 
             #checking
-            # print(descriptor_points[0,1])
-            # print(voxel_descriptor[0,match[0,1,0],match[0,1,1],match[0,1,2]])
+            # print('checking')
+            # print(descriptor_points[0,2])
+            # print(voxel_descriptor_object[0,match[0,2,0],match[0,2,1],match[0,2,2]])
 
-            # print(descriptor_match_points[0,1])
-            # print(voxel_descriptor[0,match[0,1,3],match[0,1,4],match[0,1,5]])
+            # print(descriptor_match_points[0,2])
+            # print(voxel_descriptor_package[0,match[0,2,3],match[0,2,4],match[0,2,5]])
 
-            # descriptor_match_points =  tf.gather_nd(voxel_descriptor[0,:], match[:,3:6])
             match_l2_diff = tf.reduce_sum(tf.square(descriptor_points - descriptor_match_points) , axis = 2)
 
             match_loss = tf.reduce_mean(tf.reduce_mean(match_l2_diff))
@@ -127,9 +132,8 @@ class TDDD_Net(tf.keras.Model):
             # print('hard_negatives',hard_negatives)
 
 
-        print('\n' + 'backward_propogating' + '\n')
+        # print('\n' + 'backward_propogating' + '\n')
         gradients = tape.gradient(loss,self.trainable_variables)
-        # self.gradients = gradients
         self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         return loss
 
@@ -147,7 +151,7 @@ class TDDD_Net(tf.keras.Model):
         self.ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=self.optimizer, net=self)
         self.manager = tf.train.CheckpointManager(self.ckpt, weights_path, max_to_keep=3)
 
-    def train_and_checkpoint(self,tsdf_volume,match,non_match = None,non_Match_Margin = 0.1,from_scratch = True):
+    def train_and_checkpoint(self,tsdf_volume_object,tsdf_volume_package,match,non_match = None,Non_Match_Margin = 0.1,from_scratch = True):
 
         if not from_scratch:
             self.restore()
@@ -155,8 +159,7 @@ class TDDD_Net(tf.keras.Model):
         else:
             print("Initializing from scratch.")
 
-        loss = self.compute_loss(tsdf_volume,match,non_match,Non_March_Margin)
-
+        loss = self.compute_loss(tsdf_volume_object,tsdf_volume_package,match,non_match)
 
         self.ckpt.step.assign_add(1)
 

@@ -15,6 +15,7 @@ class dataset(object):
         self._pointer_start = 0
         self._pointer_end = 0
         self._vol_dim = np.load(vol_path)
+        self._shift = np.array([[self._vol_dim[0] // 2],[0],[0]])
         # self._config = config
 
     def x_y_split(self,random_seed = 0):
@@ -44,7 +45,8 @@ class dataset(object):
 
         match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_train[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
         
-        non_matches = self.generate_non_matches(match,Non_Match_Distance_Clip)
+        match[:,:,3:] = match[:,:,3:] - self._shift.T
+        non_match = self.generate_non_matches(match,Non_Match_Distance_Clip)
 
         #random sample points
         if num_match <= match.shape[1]:
@@ -52,18 +54,23 @@ class dataset(object):
         else:
             raise Exception('number of matching sampled cannot be greater than the total number of points inside a mesh')
 
-        if num_match <= non_matches.shape[1]:
-            non_match_sample_idx = np.random.choice(non_matches.shape[1], size=num_non_match, replace=False)
+        if num_match <= non_match.shape[1]:
+            non_match_sample_idx = np.random.choice(non_match.shape[1], size=num_non_match, replace=False)
         else:
             raise Exception('number of non-matching sampled cannot be greater than the total number of points inside a mesh')
 
         match = match[:,match_sample_idx,:]
-        non_matches = non_matches[:,non_match_sample_idx,:]
+        non_match = non_match[:,non_match_sample_idx,:]
         if self._pointer_end >= self.train_size:
             self._pointer_end = 0
 
+        volume_object = volume[:,:self._shift[0,0],:]
+        volume_package = volume[:,self._shift[0,0]:,:]
 
-        return volume,match,non_matches
+        if volume_object.shape != volume_package.shape:
+            raise Exception('object volume is different from package volume')
+
+        return volume_object,volume_package,match,non_match
 
     def generate_test_data_batch(self,batch_size = 1):
         #update pointer
@@ -82,12 +89,17 @@ class dataset(object):
 
         match = np.concatenate([np.load(x)[None,...] for x in self._correspondence_list_test[self._pointer_start:self._pointer_end]],axis = 0).astype('int')
 
-        non_matches = self.generate_non_matches(match)
+        match[:,:,3:] = match[:,:,3:] - self._shift.T
+
+        # non_matches = self.generate_non_matches(match)
 
         if self._pointer_end >= self.test_size:
             self._pointer_end = 0
 
-        return volume,match
+        volume_object = volume[:,:self._shift[0,0],:]
+        volume_package = volume[:,self._shift[0,0]:,:]
+        
+        return volume_object,volume_package,match
 
     def generate_non_matches(self,match,Non_Match_Distance_Clip = 5):
         non_matches_batch = np.zeros_like(match[:,:,:3])
@@ -96,9 +108,9 @@ class dataset(object):
             vertex_a = batch[:,:3]
             non_matches = np.zeros_like(vertex_a)
             for j,vert in enumerate(vertex_a):
-                x = np.random.randint(0,self._vol_dim[0])
-                y = np.random.randint(0,self._vol_dim[1])
-                z = np.random.randint(0,self._vol_dim[2])
+                x = np.random.randint(0,self._vol_dim[0] - self._shift[0,0])
+                y = np.random.randint(0,self._vol_dim[1] - self._shift[1,0])
+                z = np.random.randint(0,self._vol_dim[2] - self._shift[2,0])
                 non_match = np.array([x,y,z])
                 if np.sum((vert - non_match) ** 2) ** 0.5 > Non_Match_Distance_Clip:
                     non_matches[j,:] = non_match

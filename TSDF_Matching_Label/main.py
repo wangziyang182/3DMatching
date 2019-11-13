@@ -5,7 +5,11 @@ import time
 import cv2
 import matplotlib.pyplot as plt
 import os
-from tsdf_integration import TSDFVolume, draw_points,find_vertices_correspondence,world_to_voxel,meshwrite,view_geometry
+from tsdf_integration import TSDFVolume
+import sys
+sys.path.append('..')
+from utils import draw_points,find_vertices_correspondence,world_to_voxel,meshwrite,view_geometry
+
 
 
 #init hyperparameter
@@ -94,12 +98,9 @@ if multi_images:
 
 
 ##check if mathcing is correct
-# view_geometry(str(mesh_path),inside_pts_x,inside_pts_y)
+view_geometry(str(mesh_path),inside_pts_x,inside_pts_y)
 # draw_points(color_image_path,RT,cam_intr,inside_pts_x,inside_pts_y)
     # tsdf_vol.find_voxel_correspondence(cam_intr,RT,keypts)
-
-
-    /Applications/Blender.app/Contents/MacOS/Blender 
 
 
 

@@ -8,7 +8,7 @@ class Config(object):
         #for training
         self._num_match = 3000
         self._num_non_match = 3000
-        self._batch_size = 5 
+        self._batch_size = 5
         self._learning_rate = 1e-4
         self._optimizer = tf.keras.optimizers.Adam(self._learning_rate)
         self._non_match_margin = 0.5
