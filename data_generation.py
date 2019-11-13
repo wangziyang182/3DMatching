@@ -113,7 +113,7 @@ def add_mesh(shape,size,location,scale,path = None):
     
 def get_dir_file_path():
     BASE_DIR = pathlib.Path(__file__)
-    BASE_DIR = BASE_DIR.parent.parent
+    BASE_DIR = BASE_DIR.parent
 
     #get base directory
     STL_DIR = BASE_DIR.joinpath('env').joinpath('mesh')
@@ -530,7 +530,7 @@ def save_vertices_inside_pts(path,obj,inside_pts):
 
 if __name__ == '__main__':
     
-    num_image = 60
+    num_image = 200
     print(list(bpy.data.objects))
     print('\n' * 20 + 'start' + '-' * 30)
     reset_all()
@@ -538,6 +538,7 @@ if __name__ == '__main__':
     #get the working directory
     BASE_DIR, STL_DIR, all_STL = get_dir_file_path()
     
+    print(all_STL)
     if not os.path.exists(BASE_DIR.joinpath('data')):
         os.chdir(BASE_DIR)
         os.mkdir('data')
