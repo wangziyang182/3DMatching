@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 import cv2
+import tensorflow as tf
 
 # Get corners of 3D camera view frustum of depth image
 def get_view_frustum(depth_im,cam_intr,cam_pose):
@@ -98,9 +99,9 @@ def find_vertices_correspondence(object_pose,vertices):
 
 def world_to_voxel(voxel_size,vertices,bounds):
     voxel = np.round(vertices/ voxel_size)
-    voxel[:,:1] = voxel[:,:1] + np.round((-bounds[0] / voxel_size)).astype(int)
-    voxel[:,1:2] = voxel[:,1:2] +np.round((-bounds[1] / voxel_size)).astype(int)
-    voxel[:,2:3] = voxel[:,2:3] +np.round((-bounds[2] / voxel_size)).astype(int)
+    voxel[:,:1] = np.round(voxel[:,:1] + (-bounds[0] / voxel_size)).astype(int)
+    voxel[:,1:2] = np.round(voxel[:,1:2] + (-bounds[1] / voxel_size)).astype(int)
+    voxel[:,2:3] = np.round(voxel[:,2:3] + (-bounds[2] / voxel_size)).astype(int)
     return voxel
 
 
@@ -217,3 +218,37 @@ def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
     line_set.colors = o3d.utility.Vector3dVector(colors)
 
     o3d.visualization.draw_geometries([pcd,line_set])
+
+def get_top_10_match(batch,src,descriptor_object,descriptor_package):
+
+    src_des = descriptor_object[batch,src[0],src[1],src[2]]
+
+    x_range = tf.range(descriptor_package.shape[1])
+    y_range = tf.range(descriptor_package.shape[2])
+    z_range = tf.range(descriptor_package.shape[3])
+    X_grid, Y_grid,Z_grid= tf.meshgrid(x_range, y_range,z_range)
+    X_grid = tf.reshape(X_grid,[-1,1])
+    Y_grid = tf.reshape(Y_grid,[-1,1])
+    Z_grid = tf.reshape(Z_grid,[-1,1])
+    grid = tf.concat([X_grid,Y_grid,Z_grid],axis = 1)
+
+    descriptor_column = tf.reshape(descriptor_package,(-1, descriptor_package.shape[-1]))    
+    diff = tf.reduce_sum((descriptor_column - src_des) ** 2,axis = 1)
+    
+    #best_match
+    src_match = tf.argmin(diff,axis = 0)
+
+    #top 10 match
+    top_10_idx = tf.argsort(diff,axis=-1,direction='ASCENDING')[:10]
+    top_10_dest = tf.gather(grid,top_10_idx,axis = 0)
+    top_10_matching_distance = tf.gather(diff,top_10_idx,axis = 0)[...,None]
+    # top_10_dest = tf.dtypes.cast(top_10_dest,'float32')
+
+    return top_10_dest,top_10_matching_distance
+
+def plot_3d_heat_map(src_des,descriptor_package):
+    distance_diff = tf.reduce_sum(tf.square((descriptor_package - src_des)),axis = -1)
+    print(distance_diff.shape)
+
+
+

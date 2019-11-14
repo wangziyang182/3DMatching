@@ -64,7 +64,7 @@ class TDDD_Net(tf.keras.Model):
         
 
     # @tf.function
-    def compute_loss(self,tsdf_volume_object,tsdf_volume_package,match,non_match = None,Non_March_Margin = 1):
+    def compute_loss(self,tsdf_volume_object,tsdf_volume_package,match,non_match ,Non_March_Margin = 1):
 
         dim_0_index_match = tf.range(match.shape[0])
         dim_0_index_match = tf.keras.backend.repeat_elements(dim_0_index_match, rep=match.shape[1], axis=0)
@@ -92,9 +92,6 @@ class TDDD_Net(tf.keras.Model):
             voxel_descriptor_object = self.call(tsdf_volume_object)
             voxel_descriptor_package = self.call(tsdf_volume_package)
 
-            print(voxel_descriptor_object.shape)
-            print(voxel_descriptor_package.shape)
-
             #matching_descriptor
             descriptor_points = tf.gather_nd(voxel_descriptor_object, points)
             descriptor_match_points =  tf.gather_nd(voxel_descriptor_package, match_points)
@@ -104,12 +101,13 @@ class TDDD_Net(tf.keras.Model):
             descriptor_non_match_a = tf.gather_nd(voxel_descriptor_package, non_match_points_)
 
             #checking
-            # print('checking')
-            # print(descriptor_points[0,2])
-            # print(voxel_descriptor_object[0,match[0,2,0],match[0,2,1],match[0,2,2]])
+            print('checking')
+            # print(descriptor_points.shape)
+            # print(descriptor_points[0,49])
+            # print(voxel_descriptor_object[0,match[0,49,0],match[0,49,1],match[0,49,2]])
 
-            # print(descriptor_match_points[0,2])
-            # print(voxel_descriptor_package[0,match[0,2,3],match[0,2,4],match[0,2,5]])
+            print(descriptor_match_points[0,2])
+            print(voxel_descriptor_package[0,match[0,2,3],match[0,2,4],match[0,2,5]])
 
             match_l2_diff = tf.reduce_sum(tf.square(descriptor_points - descriptor_match_points) , axis = 2)
 
@@ -123,13 +121,13 @@ class TDDD_Net(tf.keras.Model):
 
             non_match_loss = tf.reduce_sum((1/ (hard_negatives + 1)) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
 
-            loss = match_loss + non_match_loss
-            # loss = match_loss
-            # print('match_loss',match_loss)
-            # print('non_match_loss',non_match_loss)
+            # loss = match_loss + non_match_loss
+            loss = match_loss
+            print('match_loss',match_loss)
+            print('non_match_loss',non_match_loss)
             # print(match_l2_diff)
             # print(tf.sqrt(match_l2_diff))
-            # print('hard_negatives',hard_negatives)
+            print('hard_negatives',hard_negatives)
 
 
         # print('\n' + 'backward_propogating' + '\n')

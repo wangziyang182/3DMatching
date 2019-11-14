@@ -9,7 +9,7 @@ class Config(object):
         #for tsdf intergration
         self._vol_bnds = np.array([[-1,5],[-2,2],[0,1]])
         self._voxel_size = 0.1
-        self._n_imgs = 1
+        self._n_imgs = 2
         self._multi_images = False
 
 

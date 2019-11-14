@@ -8,9 +8,10 @@ import pathlib as PH
 from Data import dataset
 from absl import flags
 from absl import app
+import sys
+sys.path.append('..')
+from utils import get_top_10_match,plot_3d_heat_map
 
-# flags = tf.compat.v1.flags.Flag
-FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('max_steps', 2000, 'Number of steps to run trainer.')
 
@@ -43,59 +44,35 @@ def main():
 
     steps = 1
 
-    x_point_idx = 0
-    y_point_idx = 0
-
+    x_point_idx = 3
+    y_point_idx = 3
+    batch = 0
     for i in range(steps):
 
         #load correspondence and tsdf_volume
-        tsdf_volume_test_batch,correspondence_test_batch,non_matches = data.generate_train_data_batch(50, 50,batch_size = 1,Non_Match_Distance_Clip = 5)
-        # tsdf_volume_test_batch,correspondence_test_batch = data.generate_test_data_batch(1)
-        descriptor = Model(tsdf_volume_test_batch).numpy()
+        tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match,non_match = data.generate_train_data_batch(50, 50,batch_size = 1,Non_Match_Distance_Clip = 5)
+        # tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match = data.generate_test_data_batch(1)
 
-        print(descriptor.shape)
+        print('tsdf_volume_test_object_batch',tsdf_volume_test_object_batch.shape)
+        print('match',match.shape)
+        #get the descriptor for object and package
+        descriptor_object = Model(tsdf_volume_test_object_batch).numpy()
+        descriptor_package = Model(tsdf_volume_test_package_batch).numpy()
 
-        x = correspondence_test_batch[0,x_point_idx,:][:3]
-        y = correspondence_test_batch[0,y_point_idx,:][3:]
+        #get the src and destination ground truth for first batch point_idxth point 
+        src = match[batch,x_point_idx,:][:3]
+        dest = match[batch,y_point_idx,:][3:]
 
-        x_range = tf.range(descriptor.shape[1])
-        y_range = tf.range(descriptor.shape[2])
-        z_range = tf.range(descriptor.shape[3])
-        print(x_range.shape)
-        X_grid, Y_grid,Z_grid= tf.meshgrid(x_range, y_range,z_range)
-        X_grid = tf.reshape(X_grid,[-1,1])
-        Y_grid = tf.reshape(Y_grid,[-1,1])
-        Z_grid = tf.reshape(Z_grid,[-1,1])
+        top_10_dest,top_10_matching_distance = get_top_10_match(batch,src,descriptor_object,descriptor_package)
 
-        grid = tf.concat([X_grid,Y_grid,Z_grid],axis = 1)
+        src_des = descriptor_object[batch,src[0],src[1],src[2]]
+        dest_des = descriptor_package[batch,dest[0],dest[1],dest[2]]
 
-        x_de = descriptor[0,x[0],x[1],x[2]]
+        print('diff',np.sqrt(np.sum((src_des - dest_des) ** 2)))
+        print('top_10_dest',top_10_dest,top_10_matching_distance)
+        print('Ground Truth',[dest[0],dest[1],dest[2]])
 
-        tf.argmin(tf.square((descriptor - x_de)),axis = 0)
-        descriptor_column = tf.reshape(descriptor,(-1, descriptor.shape[-1]))
-
-        # print(descriptor_column[2])
-        # print(descriptor[0,0,0,2,:])
-        # print(grid)
-
-
-        diff = tf.reduce_sum((descriptor_column - x_de) ** 2,axis = 1)
-        x_de_match_idx = tf.argmin(diff,axis = 0)
-        print('based on descriptor',grid[x_de_match_idx,:])
-        for idx in tf.argsort(diff,axis=-1,direction='ASCENDING')[:10]:
-            print(grid[idx,:])
-        # print('top 10',tf.gather_nd(grid,tf.argsort(diff,axis=-1,direction='ASCENDING')[:10]))
-        print('Ground Truth',[y[0],y[1],y[2]])
-        # print('idx',x_de_match_idx[])
-        print(tf.argsort(diff,axis=-1,direction='ASCENDING')[:10])
-        # descriptor_column = tf.reshape(descriptor_column,descriptor.shape)
-
-        # print(descriptor_reshape[0,0,0,1,:])
-
-        y_de = descriptor[0,y[0],y[1],y[2]]
-
-
-        print('diff',np.sqrt(np.sum((x_de - y_de) ** 2)))
+        plot_3d_heat_map(src_des,descriptor_package)
 
 
 

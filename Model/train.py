@@ -11,22 +11,9 @@ from absl import flags
 from absl import app
 from absl import logging
 from tqdm import tqdm
-# from Model_Share_Weights import TDDD_Net
-# flags = tf.compat.v1.flags.Flag
 
-FLAGS = flags.FLAGS
-
-flags.DEFINE_integer('max_steps', 2000, 'Number of steps to run trainer.')
-flags.DEFINE_float('non_match_M', 1, 'cut_off of non_match')
-flags.DEFINE_integer('epoch', 10,'number of epoches to train')
-
-# def main(argv):
 
 def main():
-    # if FLAGS.debug:
-    #     print('non-flag arguments:', argv)
-    # if FLAGS.age is not None:
-    #     pass
 
     #init parameter
     config = Config()
@@ -69,9 +56,8 @@ def main():
             #load correspondence and tsdf_volume
             tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size,non_match_distance_clip)
 
-            # Model.train_and_checkpoint(tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_Match_Margin = non_match_margin,from_scratch = from_scratch)
+            Model.train_and_checkpoint(tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_Match_Margin = non_match_margin,from_scratch = from_scratch)
 
 
 if __name__ == '__main__':
-    # app.run(main)
     main()
