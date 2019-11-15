@@ -35,7 +35,6 @@ def main():
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')
     weights_path = str(MODEL_WEIGHTS_PATH.joinpath('ckpt'))
 
-
     # define Matching Net
     Model = TDDD_Net()
     Model.optimizer = optimizer
@@ -46,15 +45,16 @@ def main():
 
     x_point_idx = 3
     y_point_idx = 3
-    batch = 0
+    batch = 1
     for i in range(steps):
 
         #load correspondence and tsdf_volume
-        tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match,non_match = data.generate_train_data_batch(50, 50,batch_size = 1,Non_Match_Distance_Clip = 5)
+        print('_pointer_start',data._pointer_start)
+        print('_pointer_end',data._pointer_end)
+        tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match,non_match = data.generate_train_data_batch(50, 50,batch_size = 2,Non_Match_Distance_Clip = 5)
         # tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match = data.generate_test_data_batch(1)
 
-        print('tsdf_volume_test_object_batch',tsdf_volume_test_object_batch.shape)
-        print('match',match.shape)
+        print('match',match[batch,:4,:])
         #get the descriptor for object and package
         descriptor_object = Model(tsdf_volume_test_object_batch).numpy()
         descriptor_package = Model(tsdf_volume_test_package_batch).numpy()
@@ -62,17 +62,24 @@ def main():
         #get the src and destination ground truth for first batch point_idxth point 
         src = match[batch,x_point_idx,:][:3]
         dest = match[batch,y_point_idx,:][3:]
+        # print(src)
+        print('matching descriptor',dest)
 
-        top_10_dest,top_10_matching_distance = get_top_10_match(batch,src,descriptor_object,descriptor_package)
+
+        top_10_dest,top_10_matching_distance = get_top_10_match(batch,src,descriptor_object,descriptor_package,dest)
+
 
         src_des = descriptor_object[batch,src[0],src[1],src[2]]
         dest_des = descriptor_package[batch,dest[0],dest[1],dest[2]]
 
-        print('diff',np.sqrt(np.sum((src_des - dest_des) ** 2)))
-        print('top_10_dest',top_10_dest,top_10_matching_distance)
+        
+        print('top_10_dest',top_10_dest)
+        print(top_10_matching_distance)
         print('Ground Truth',[dest[0],dest[1],dest[2]])
+        print('ground_truth_diff',np.sqrt(np.sum((src_des - dest_des) ** 2)))
 
-        plot_3d_heat_map(src_des,descriptor_package)
+
+        # plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package)
 
 
 

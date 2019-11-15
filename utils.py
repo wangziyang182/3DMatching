@@ -3,6 +3,7 @@ import open3d as o3d
 import cv2
 import tensorflow as tf
 
+
 # Get corners of 3D camera view frustum of depth image
 def get_view_frustum(depth_im,cam_intr,cam_pose):
     im_h = depth_im.shape[0]
@@ -204,6 +205,9 @@ def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 10):
 
 def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
     pcd = o3d.io.read_point_cloud(ply_path)
+
+    print(type(pcd))
+    print(dir(pcd))
     
     #random sample
     index = np.random.choice(len(vertices_a),num_pts,replace = False)
@@ -219,36 +223,97 @@ def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
 
     o3d.visualization.draw_geometries([pcd,line_set])
 
-def get_top_10_match(batch,src,descriptor_object,descriptor_package):
+def get_top_10_match(batch,src,descriptor_object,descriptor_package,dest):
 
     src_des = descriptor_object[batch,src[0],src[1],src[2]]
 
     x_range = tf.range(descriptor_package.shape[1])
     y_range = tf.range(descriptor_package.shape[2])
     z_range = tf.range(descriptor_package.shape[3])
-    X_grid, Y_grid,Z_grid= tf.meshgrid(x_range, y_range,z_range)
+    X_grid, Y_grid,Z_grid= np.meshgrid(x_range, y_range,z_range, indexing='ij')
+
     X_grid = tf.reshape(X_grid,[-1,1])
     Y_grid = tf.reshape(Y_grid,[-1,1])
     Z_grid = tf.reshape(Z_grid,[-1,1])
+
     grid = tf.concat([X_grid,Y_grid,Z_grid],axis = 1)
 
-    descriptor_column = tf.reshape(descriptor_package,(-1, descriptor_package.shape[-1]))    
-    diff = tf.reduce_sum((descriptor_column - src_des) ** 2,axis = 1)
+    descriptor_column = np.reshape(descriptor_package[batch],(-1, descriptor_package.shape[-1])) 
+
+    descriptor_column_combine = np.concatenate([grid,descriptor_column],axis = 1)
+
+    diff = np.sqrt(np.sum((descriptor_column - src_des) ** 2,axis = 1))
     
     #best_match
-    src_match = tf.argmin(diff,axis = 0)
-
+    src_match = tf.argmin(diff)
     #top 10 match
-    top_10_idx = tf.argsort(diff,axis=-1,direction='ASCENDING')[:10]
+    top_10_idx = tf.argsort(diff,direction='ASCENDING')[:40]
     top_10_dest = tf.gather(grid,top_10_idx,axis = 0)
     top_10_matching_distance = tf.gather(diff,top_10_idx,axis = 0)[...,None]
-    # top_10_dest = tf.dtypes.cast(top_10_dest,'float32')
 
     return top_10_dest,top_10_matching_distance
 
-def plot_3d_heat_map(src_des,descriptor_package):
-    distance_diff = tf.reduce_sum(tf.square((descriptor_package - src_des)),axis = -1)
-    print(distance_diff.shape)
+def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package):
 
+    src_des = descriptor_object[batch,src[0],src[1],src[2]]
+
+    distance_diff = tf.sqrt(tf.reduce_sum(tf.square((descriptor_package - src_des)),axis = -1))
+    print('average_loss',tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(distance_diff)))))
+    x_range = tf.range(descriptor_package.shape[1])
+    y_range = tf.range(descriptor_package.shape[2])
+    z_range = tf.range(descriptor_package.shape[3])
+    X_grid, Y_grid,Z_grid= np.meshgrid(x_range, y_range,z_range, indexing='ij')
+
+    X_grid = tf.reshape(X_grid,[-1,1])
+    Y_grid = tf.reshape(Y_grid,[-1,1])
+    Z_grid = tf.reshape(Z_grid,[-1,1])
+
+
+    grid = tf.concat([X_grid,Y_grid,Z_grid],axis = 1)
+
+    distance_diff_column = tf.reshape(distance_diff,(-1, 1))
+
+    print(distance_diff_column.shape)
+
+    minimum = np.min(distance_diff_column,axis= 0)
+    maximum = np.max(distance_diff_column,axis = 0)
+
+    heatmap_rgb = to_rgb(minimum,maximum,distance_diff_column)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(grid)
+    pcd.colors = o3d.utility.Vector3dVector(heatmap_rgb)
+
+    print(grid)
+    mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=.5)
+    mesh_sphere.compute_vertex_normals()
+    mesh_sphere.paint_uniform_color([0.1, 0.1, 0.7])
+    
+    mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
+
+    print(heatmap_rgb)
+    print(distance_diff_column)
+    print(np.mean(heatmap_rgb[:,0]))
+    print(np.mean(heatmap_rgb[:,1]))
+    print(np.mean(heatmap_rgb[:,2]))
+
+    o3d.visualization.draw_geometries([pcd,mesh_sphere])
+
+
+
+def to_rgb(minimum, maximum, values):
+    heatmap_rgb = np.zeros((values.shape[0],3))
+    minimum, maximum = float(minimum), float(maximum)
+    ratio = 2 * (values-minimum) / (maximum - minimum)
+    print('ratio',ratio)
+
+    #R
+    heatmap_rgb[:,0:1] = np.maximum(0, 255*(ratio - 1)) / 255
+    #G
+    heatmap_rgb[:,1:2] = np.maximum(0, 255*(1 - ratio)) / 255
+    #B
+    heatmap_rgb[:,2:3] = 1 -  heatmap_rgb[:,0:1] - heatmap_rgb[:,1:2]
+
+    return heatmap_rgb
 
 

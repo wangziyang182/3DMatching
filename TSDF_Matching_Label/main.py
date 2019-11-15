@@ -97,7 +97,7 @@ if multi_images:
 
 
 ##check if mathcing is correct
-# view_geometry(str(mesh_path),inside_pts_x,inside_pts_y)
+view_geometry(str(mesh_path),inside_pts_x,inside_pts_y)
 # draw_points(color_image_path,RT,cam_intr,inside_pts_x,inside_pts_y)
     # tsdf_vol.find_voxel_correspondence(cam_intr,RT,keypts)
 

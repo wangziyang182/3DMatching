@@ -58,9 +58,20 @@ class dataset(object):
             non_match_sample_idx = np.random.choice(non_match.shape[1], size=num_non_match, replace=False)
         else:
             raise Exception('number of non-matching sampled cannot be greater than the total number of points inside a mesh')
+        
+
+
+
+        ####test!!!!!!
+        # match_sample_idx = np.arange(match.shape[1])
+        
+
+
+
 
         match = match[:,match_sample_idx,:]
         non_match = non_match[:,non_match_sample_idx,:]
+
         if self._pointer_end >= self.train_size:
             self._pointer_end = 0
 
@@ -98,7 +109,7 @@ class dataset(object):
 
         volume_object = volume[:,:self._shift[0,0],:]
         volume_package = volume[:,self._shift[0,0]:,:]
-        
+
         return volume_object,volume_package,match
 
     def generate_non_matches(self,match,Non_Match_Distance_Clip = 5):
