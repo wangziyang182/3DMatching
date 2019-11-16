@@ -10,7 +10,7 @@ from absl import flags
 from absl import app
 import sys
 sys.path.append('..')
-from utils import get_top_10_match,plot_3d_heat_map
+from utils import get_top_match,plot_3d_heat_map
 
 
 flags.DEFINE_integer('max_steps', 2000, 'Number of steps to run trainer.')
@@ -45,7 +45,7 @@ def main():
 
     x_point_idx = 3
     y_point_idx = 3
-    batch = 1
+    batch = 0
     for i in range(steps):
 
         #load correspondence and tsdf_volume
@@ -66,20 +66,20 @@ def main():
         print('matching descriptor',dest)
 
 
-        top_10_dest,top_10_matching_distance = get_top_10_match(batch,src,descriptor_object,descriptor_package,dest)
+        top_best,top_matching_distance,top_idx = get_top_match(batch,src,descriptor_object,descriptor_package,dest)
 
 
         src_des = descriptor_object[batch,src[0],src[1],src[2]]
         dest_des = descriptor_package[batch,dest[0],dest[1],dest[2]]
 
         
-        print('top_10_dest',top_10_dest)
-        print(top_10_matching_distance)
+        print('top_best',top_best)
+        print(top_matching_distance)
         print('Ground Truth',[dest[0],dest[1],dest[2]])
         print('ground_truth_diff',np.sqrt(np.sum((src_des - dest_des) ** 2)))
 
 
-        # plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package)
+        plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx)
 
 
 

@@ -2,6 +2,7 @@ import numpy as np
 import open3d as o3d
 import cv2
 import tensorflow as tf
+from numpy.linalg import inv
 
 
 # Get corners of 3D camera view frustum of depth image
@@ -223,7 +224,7 @@ def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
 
     o3d.visualization.draw_geometries([pcd,line_set])
 
-def get_top_10_match(batch,src,descriptor_object,descriptor_package,dest):
+def get_top_match(batch,src,descriptor_object,descriptor_package,dest):
 
     src_des = descriptor_object[batch,src[0],src[1],src[2]]
 
@@ -247,65 +248,104 @@ def get_top_10_match(batch,src,descriptor_object,descriptor_package,dest):
     #best_match
     src_match = tf.argmin(diff)
     #top 10 match
-    top_10_idx = tf.argsort(diff,direction='ASCENDING')[:40]
-    top_10_dest = tf.gather(grid,top_10_idx,axis = 0)
-    top_10_matching_distance = tf.gather(diff,top_10_idx,axis = 0)[...,None]
+    top_idx = tf.argsort(diff,direction='ASCENDING')[:30]
+    top_best = tf.gather(grid,top_idx,axis = 0)
+    top_matching_distance = tf.gather(diff,top_idx,axis = 0)[...,None]
 
-    return top_10_dest,top_10_matching_distance
+    return top_best,top_matching_distance,top_idx
 
-def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package):
+def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx):
 
     src_des = descriptor_object[batch,src[0],src[1],src[2]]
 
-    distance_diff = tf.sqrt(tf.reduce_sum(tf.square((descriptor_package - src_des)),axis = -1))
+    distance_diff = tf.sqrt(tf.reduce_sum(tf.square((descriptor_package[batch] - src_des)),axis = -1))
     print('average_loss',tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(distance_diff)))))
+
+    #generate grid
     x_range = tf.range(descriptor_package.shape[1])
     y_range = tf.range(descriptor_package.shape[2])
     z_range = tf.range(descriptor_package.shape[3])
     X_grid, Y_grid,Z_grid= np.meshgrid(x_range, y_range,z_range, indexing='ij')
-
     X_grid = tf.reshape(X_grid,[-1,1])
     Y_grid = tf.reshape(Y_grid,[-1,1])
     Z_grid = tf.reshape(Z_grid,[-1,1])
-
-
     grid = tf.concat([X_grid,Y_grid,Z_grid],axis = 1)
 
+    #get the 
     distance_diff_column = tf.reshape(distance_diff,(-1, 1))
 
-    print(distance_diff_column.shape)
+    heatmap_rgb = to_rgb(distance_diff_column)
+    radius = calculate_radius(distance_diff_column,raidus_min = 0.2, raidus_max = 1)
 
-    minimum = np.min(distance_diff_column,axis= 0)
-    maximum = np.max(distance_diff_column,axis = 0)
+    #draw sphere one by one
+    object_list = visualize_3D_heatmap(grid,heatmap_rgb,radius,dest,top_idx)
 
-    heatmap_rgb = to_rgb(minimum,maximum,distance_diff_column)
 
+    # #draw point cloud
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(grid)
     pcd.colors = o3d.utility.Vector3dVector(heatmap_rgb)
+    object_list.append(pcd)
 
-    print(grid)
-    mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=.5)
-    mesh_sphere.compute_vertex_normals()
-    mesh_sphere.paint_uniform_color([0.1, 0.1, 0.7])
+    # mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=.5)
+    # mesh_sphere.compute_vertex_normals()
+    # mesh_sphere.paint_uniform_color([0, 0, 0])
     
-    mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
-
+    # mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
+    # object_list.append(mesh_sphere)
     print(heatmap_rgb)
     print(distance_diff_column)
     print(np.mean(heatmap_rgb[:,0]))
     print(np.mean(heatmap_rgb[:,1]))
     print(np.mean(heatmap_rgb[:,2]))
 
-    o3d.visualization.draw_geometries([pcd,mesh_sphere])
+    o3d.visualization.draw_geometries(object_list)
+
+def visualize_3D_heatmap(locations,color,radius,dest,top_idx):
+
+    # locations = locations[top_idx,:]
+    # color = color[top_idx,:]
+    # raidus = raidus[top_idx]
+    object_list = []
+    #draw ground truth
+    mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=1)
+    # mesh_sphere.compute_vertex_normals()
+    mesh_sphere.paint_uniform_color([0, 0, 0])
+    mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
+    object_list.append(mesh_sphere)
+
+    for idx in top_idx:
+        mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius[idx])
+         # mesh_sphere.compute_vertex_normals()
+        print(color[idx,:])
+        mesh_sphere.paint_uniform_color(color[idx,:])
+        mesh_sphere = mesh_sphere.translate(locations[idx])
+        object_list.append(mesh_sphere)
+        
+    return object_list
+    print(object_list)
+    # o3d.visualization.draw_geometries(object_list)
 
 
 
-def to_rgb(minimum, maximum, values):
+def calculate_radius(distance_diff_column,raidus_min = 0.1, raidus_max = 0.4):
+    
+    A = np.array([[np.amin(distance_diff_column),1],[np.amax(distance_diff_column),1]])
+    b = np.array([[raidus_max],[raidus_min]])
+    x = inv(A) @ b
+    radius = np.concatenate([distance_diff_column,np.ones(distance_diff_column.shape)],axis = 1) @ x
+
+    return radius
+
+
+def to_rgb(values):
+    minimum = np.min(values,axis= 0)
+    maximum = np.max(values,axis = 0)
+    
     heatmap_rgb = np.zeros((values.shape[0],3))
-    minimum, maximum = float(minimum), float(maximum)
     ratio = 2 * (values-minimum) / (maximum - minimum)
-    print('ratio',ratio)
+    print('minimum',minimum)
+    print('maximum',maximum)
 
     #R
     heatmap_rgb[:,0:1] = np.maximum(0, 255*(ratio - 1)) / 255
