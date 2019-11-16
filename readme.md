@@ -44,6 +44,12 @@ python ./Model/train.py
 * The validation file (On Going)
 
 ## Testing Results
+on Going
+
+## Feature Improvement
+1.Regression on Coordinates difference(add another form of supervision)
+2.Implement U net
+
 
 ## Reference
 ```
