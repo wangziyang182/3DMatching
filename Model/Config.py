@@ -6,12 +6,12 @@ class Config(object):
     def __init__(self):
         
         #for training
-        self._num_match = 50
-        self._num_non_match = 50
-        self._batch_size = 1
-        self._learning_rate = 1e-3
+        self._num_match = 4000
+        self._num_non_match = 4000
+        self._batch_size = 5
+        self._learning_rate = 3e-4
         self._optimizer = tf.keras.optimizers.Adam(self._learning_rate)
-        self._non_match_margin = 1
+        self._non_match_margin = 0.5
         self._from_scratch = True
         self._non_match_distance_clip = 5
         ##Random Seed for trian test split

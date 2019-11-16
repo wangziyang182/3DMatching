@@ -106,8 +106,8 @@ class TDDD_Net(tf.keras.Model):
             # print(descriptor_points[0,49])
             # print(voxel_descriptor_object[0,match[0,49,0],match[0,49,1],match[0,49,2]])
 
-            print(descriptor_match_points[0,2])
-            print(voxel_descriptor_package[0,match[0,2,3],match[0,2,4],match[0,2,5]])
+            # print(descriptor_match_points[0,2])
+            # print(voxel_descriptor_package[0,match[0,2,3],match[0,2,4],match[0,2,5]])
 
             match_l2_diff = tf.reduce_sum(tf.square(descriptor_points - descriptor_match_points) , axis = 2)
 
@@ -121,8 +121,8 @@ class TDDD_Net(tf.keras.Model):
 
             non_match_loss = tf.reduce_sum((1/ (hard_negatives + 1)) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0) ** 2))
 
-            # loss = match_loss + non_match_loss
-            loss = match_loss
+            loss = match_loss + non_match_loss
+            # loss = match_loss
             print('match_loss',match_loss)
             print('non_match_loss',non_match_loss)
             # print(match_l2_diff)
@@ -167,6 +167,7 @@ class TDDD_Net(tf.keras.Model):
             print("loss {:1.2f}".format(loss.numpy()))
     
     def restore(self):
+        print('\n' + 'restore from :',self.manager.latest_checkpoint)
         self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
 
 

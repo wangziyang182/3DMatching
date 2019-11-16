@@ -29,7 +29,7 @@ def main():
 
     data = dataset()
     data.x_y_split(random_seed = random_seed)
-    steps_per_epoch = data.train_size // batch_size + 1
+    steps_per_epoch = data.train_size / batch_size + 1
     
     BASE_DIR = PH.Path(__file__).absolute().parent.parent
     MODEL_WEIGHTS_PATH = BASE_DIR.joinpath('Model').joinpath('Model_Weights')

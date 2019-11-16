@@ -3,6 +3,9 @@ import open3d as o3d
 import cv2
 import tensorflow as tf
 from numpy.linalg import inv
+import colorsys
+from matplotlib.colors import hsv_to_rgb
+
 
 
 # Get corners of 3D camera view frustum of depth image
@@ -293,11 +296,6 @@ def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx
     
     # mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
     # object_list.append(mesh_sphere)
-    print(heatmap_rgb)
-    print(distance_diff_column)
-    print(np.mean(heatmap_rgb[:,0]))
-    print(np.mean(heatmap_rgb[:,1]))
-    print(np.mean(heatmap_rgb[:,2]))
 
     o3d.visualization.draw_geometries(object_list)
 
@@ -317,13 +315,11 @@ def visualize_3D_heatmap(locations,color,radius,dest,top_idx):
     for idx in top_idx:
         mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius[idx])
          # mesh_sphere.compute_vertex_normals()
-        print(color[idx,:])
         mesh_sphere.paint_uniform_color(color[idx,:])
         mesh_sphere = mesh_sphere.translate(locations[idx])
         object_list.append(mesh_sphere)
         
     return object_list
-    print(object_list)
     # o3d.visualization.draw_geometries(object_list)
 
 
@@ -337,6 +333,15 @@ def calculate_radius(distance_diff_column,raidus_min = 0.1, raidus_max = 0.4):
 
     return radius
 
+def calculate_angle(distance_diff_column,angle_min = 0, angle_max = 240/360):
+    
+    A = np.array([[np.amin(distance_diff_column),1],[np.amax(distance_diff_column),1]])
+    b = np.array([[angle_min],[angle_max]])
+    x = inv(A) @ b
+    angle = np.concatenate([distance_diff_column,np.ones(distance_diff_column.shape)],axis = 1) @ x
+
+    return angle
+
 
 def to_rgb(values):
     minimum = np.min(values,axis= 0)
@@ -344,16 +349,18 @@ def to_rgb(values):
     
     heatmap_rgb = np.zeros((values.shape[0],3))
     ratio = 2 * (values-minimum) / (maximum - minimum)
-    print('minimum',minimum)
-    print('maximum',maximum)
 
     #R
     heatmap_rgb[:,0:1] = np.maximum(0, 255*(ratio - 1)) / 255
-    #G
-    heatmap_rgb[:,1:2] = np.maximum(0, 255*(1 - ratio)) / 255
     #B
-    heatmap_rgb[:,2:3] = 1 -  heatmap_rgb[:,0:1] - heatmap_rgb[:,1:2]
+    heatmap_rgb[:,2:3] = np.maximum(0, 255*(1 - ratio)) / 255
+    #G
+    heatmap_rgb[:,1:2] = 1 -  heatmap_rgb[:,0:1] - heatmap_rgb[:,2:3]
 
+    angle = calculate_angle(values)
+    hsv = np.concatenate([angle,np.ones(angle.shape) ,np.ones(angle.shape)],axis = 1)
+    heatmap_rgb = hsv_to_rgb(hsv)
+    # print('rgb',rgb)
     return heatmap_rgb
 
 
