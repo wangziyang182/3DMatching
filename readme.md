@@ -26,7 +26,7 @@ For blender download please visit blender [offical website].
 
 ![png](/figs/object_package.png)
 
-![png](/figs/RGB-D_Matching.png)
+<img src="/figs/RGB-D_Matching.png" width="960" height="960">
 
 * Run the following command to acquire TSDF volume and correspondence between object and packages. Configuration can be find in the config file.
 ```
