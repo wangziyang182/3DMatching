@@ -36,22 +36,22 @@ def main():
     weights_path = str(MODEL_WEIGHTS_PATH.joinpath('ckpt'))
 
     # define Matching Net
-    Model = TDDD_Net()
+    Model = TDDD_Net('3D_U_Net')
     Model.optimizer = optimizer
     Model.create_ckpt_manager(weights_path)
     Model.restore()
 
     steps = 1
 
-    x_point_idx = 3
-    y_point_idx = 3
+    x_point_idx = 1
+    y_point_idx = 1
     batch = 0
     for i in range(steps):
 
         #load correspondence and tsdf_volume
         print('_pointer_start',data._pointer_start)
         print('_pointer_end',data._pointer_end)
-        tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match,non_match = data.generate_train_data_batch(50, 50,batch_size = 2,Non_Match_Distance_Clip = 5)
+        tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match,non_match = data.generate_train_data_batch(10, 10,batch_size = 1,Non_Match_Distance_Clip = 5)
         # tsdf_volume_test_object_batch,tsdf_volume_test_package_batch,match = data.generate_test_data_batch(1)
 
         print('match',match[batch,:4,:])

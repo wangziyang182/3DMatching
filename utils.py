@@ -209,10 +209,7 @@ def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 10):
 
 def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
     pcd = o3d.io.read_point_cloud(ply_path)
-
-    print(type(pcd))
-    print(dir(pcd))
-    
+        
     #random sample
     index = np.random.choice(len(vertices_a),num_pts,replace = False)
     vertices_a = vertices_a[index,:]

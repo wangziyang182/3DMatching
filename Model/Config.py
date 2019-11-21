@@ -6,19 +6,18 @@ class Config(object):
     def __init__(self):
         
         #for training
-        self._num_match = 4000
-        self._num_non_match = 4000
-        self._batch_size = 5
-        self._learning_rate = 3e-4
+        self._num_match = 1000000
+        self._num_non_match = 1000000
+        self._batch_size = 8
+        self._learning_rate = 5e-4
         self._optimizer = tf.keras.optimizers.Adam(self._learning_rate)
         self._non_match_margin = 0.5
-        self._from_scratch = True
-        self._non_match_distance_clip = 5
+        self._from_scratch = False
+        self._non_match_distance_clip = 3
         ##Random Seed for trian test split
         self._random_seed = 0 
         self._epoch = 50 
-
-
+        self._model = '3D_U_Net'
 
 
     @property
@@ -59,4 +58,7 @@ class Config(object):
         return self._non_match_distance_clip
     
     
+    @property
+    def model(self):
+        return self._model
     
