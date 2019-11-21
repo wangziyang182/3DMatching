@@ -43,6 +43,9 @@ python ./Model/train.py
 ```
 * The validation file (On Going)
 
+## Voxel Feature Learning Model Architecture
+![png](figs/3D_U_Net.png) 
+I used 3D U_Net to learn dense voxel-wise feature, and this feature will be used to estimate 12 DOF rigid body transformation . All the 3D convolution has kernel size 3 x 3 x 3. 
 ## Testing Results
 on Going
 
