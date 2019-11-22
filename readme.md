@@ -46,12 +46,14 @@ python ./Model/train.py
 ## Voxel Feature Learning Model Architecture
 ![png](figs/3D_U_Net.png) 
 I used 3D U_Net to learn dense voxel-wise feature, and this feature will be used to estimate 12 DOF rigid body transformation . All the 3D convolution has kernel size 3 x 3 x 3. 
-## Testing Results
-on Going
 
-## Feature Improvement
-1.Regression on Coordinates difference(add another form of supervision)
-2.Implement U net
+## qualitative assessment
+![png](figs/recovered_matching_1.png)
+![png](figs/recovered_matching_2.png)
+![png](figs/recovered_matching_3.png)
+
+Above graph are the 3D heatmap(point cloud) for the package. The heatmap is based on the l2 difference of learned feature between the ground truth in the object(left half of the pointcloud), a black point, and all the voxel space in the package. The red dots represents the top 30 corresponding voxels. As show in the figures above, the model is able to learn similar geometry,points have similar geometry tend to have smaller feature distance distance. The color itself is picked from hsv color palette where hue has value range from 0 degree to 240 degree. Red color indicates smaller l2 distance and blue color indicates large l2 distance.
+
 
 
 ## Reference
