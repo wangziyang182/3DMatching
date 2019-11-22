@@ -47,18 +47,15 @@ def main():
 
 
     # define Matching Net
-    Model = TDDD_Net(model)
-
-    Model.optimizer = optimizer
-    Model.create_ckpt_manager(weights_path)
+    Model = TDDD_Net(model,from_scratch,weights_path,optimizer)
 
     for i in tqdm(range(epoch),desc="Epoch",position = 0,leave = True):
         for j in tqdm(range(data.train_size // batch_size + 1),desc="Step",position=0, leave=True):
             #load correspondence and tsdf_volume
-            tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_correspondence_train = data.generate_train_data_batch(num_match,num_non_match,batch_size,non_match_distance_clip)
+            tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_correspondence_train,_ = data.generate_train_data_batch(num_match,num_non_match,batch_size,non_match_distance_clip)
 
 
-            Model.train_and_checkpoint(tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_Match_Margin = non_match_margin,from_scratch = from_scratch)
+            Model.train_and_checkpoint(tsdf_volume_object_batch_train,tsdf_volume_package_batch_train,correspondence_batch_train,non_match = non_correspondence_train,Non_Match_Margin = non_match_margin)
         
 
 if __name__ == '__main__':

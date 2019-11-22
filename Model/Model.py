@@ -4,12 +4,14 @@ import numpy as np
 from U_Net_Module import U_net_down_sampling_block,U_net_up_sampling_block
 
 class TDDD_Net(tf.keras.Model):
-  
-    def __init__(self,model):
+    
+    def __init__(self,model,from_scratch,weights_path,optimizer):
         super(TDDD_Net,self).__init__()
         
-        self._optimizer = None
+        self._optimizer = optimizer
+        self._from_scratch = from_scratch
         self._model = model
+
         if model not in ['Standard_3D_Encoder_Decoder','3D_U_Net']:
             raise Exception('Only Standard_3D_Encoder_Decoder and 3D_U_Net are supported')
 
@@ -75,6 +77,13 @@ class TDDD_Net(tf.keras.Model):
 
             self.fc_layer_1 = tf.keras.layers.Dense(128,activation = 'relu')
             self.fc_layer_2 = tf.keras.layers.Dense(3,activation = 'relu')
+
+        self.create_ckpt_manager(weights_path)
+        if not self._from_scratch:
+            self.restore()
+            print("Restored from {}".format(self.manager.latest_checkpoint))
+        else:
+            print("Initializing from scratch.")
 
 
 
@@ -164,7 +173,7 @@ class TDDD_Net(tf.keras.Model):
             descriptor_points_ = tf.gather_nd(voxel_descriptor_object,points_)
             descriptor_non_match_a = tf.gather_nd(voxel_descriptor_package, non_match_points_)
 
-            
+
             # #combine_feature
             # combine_feature = tf.gather_nd(voxel_descriptor_combine,points)
 
@@ -199,13 +208,13 @@ class TDDD_Net(tf.keras.Model):
             #triple item loss
             loss = match_loss + non_match_loss
             # loss = match_loss
-            print('match_loss',match_loss)
-            print('non_match_loss',non_match_loss)
+            self.match_loss = match_loss
+            self.non_match_loss = non_match_loss
+            self.hard_negatives = hard_negatives
             # print('shift_loss',shift_loss)
 
             # print(match_l2_diff)
             # print(tf.sqrt(match_l2_diff))
-            print('hard_negatives',hard_negatives)
 
 
         # print('\n' + 'backward_propogating' + '\n')
@@ -228,23 +237,18 @@ class TDDD_Net(tf.keras.Model):
         self.ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=self.optimizer, net=self)
         self.manager = tf.train.CheckpointManager(self.ckpt, weights_path, max_to_keep=3)
 
-    def train_and_checkpoint(self,tsdf_volume_object,tsdf_volume_package,match,non_match = None,Non_Match_Margin = 0.1,from_scratch = True):
-
-        if not from_scratch:
-            self.restore()
-            print("Restored from {}".format(self.manager.latest_checkpoint))
-        else:
-            print("Initializing from scratch.")
+    def train_and_checkpoint(self,tsdf_volume_object,tsdf_volume_package,match,non_match = None,Non_Match_Margin = 0.1):
 
         loss = self.compute_loss(tsdf_volume_object,tsdf_volume_package,match,non_match,Non_Match_Margin)
 
         self.ckpt.step.assign_add(1)
 
-        if int(self.ckpt.step) % 1 == 0:
+        print("step : {}    |   loss : {:1.2f}  |   match_loss : {:1.2f}    |   non_match_loss : {1.2f}    |    hard_negatives_average".format(int(self.ckpt.step),loss.numpy(),self.match_loss,self.non_match_loss,sum(self.hard_negatives)/len(self.hard_negatives)))
+        print('hard_negatives : {}'.format(self.hard_negatives))
+        if int(self.ckpt.step) % 3 == 0:
             save_path = self.manager.save()
             print("Saved checkpoint for step {}: {}".format(int(self.ckpt.step), save_path))
-            print("loss {:1.2f}".format(loss.numpy()))
-    
+
     def restore(self):
         print('\n' + 'restore from :',self.manager.latest_checkpoint)
         self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()

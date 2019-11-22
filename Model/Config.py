@@ -12,7 +12,7 @@ class Config(object):
         self._learning_rate = 5e-4
         self._optimizer = tf.keras.optimizers.Adam(self._learning_rate)
         self._non_match_margin = 0.5
-        self._from_scratch = False
+        self._from_scratch = True
         self._non_match_distance_clip = 3
         ##Random Seed for trian test split
         self._random_seed = 0 

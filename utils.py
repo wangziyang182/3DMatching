@@ -224,6 +224,7 @@ def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
 
     o3d.visualization.draw_geometries([pcd,line_set])
 
+
 def get_top_match(batch,src,descriptor_object,descriptor_package,dest):
 
     src_des = descriptor_object[batch,src[0],src[1],src[2]]
@@ -254,6 +255,7 @@ def get_top_match(batch,src,descriptor_object,descriptor_package,dest):
 
     return top_best,top_matching_distance,top_idx
 
+
 def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx):
 
     src_des = descriptor_object[batch,src[0],src[1],src[2]]
@@ -278,8 +280,7 @@ def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx
     radius = calculate_radius(distance_diff_column,raidus_min = 0.2, raidus_max = 1)
 
     #draw sphere one by one
-    object_list = visualize_3D_heatmap(grid,heatmap_rgb,radius,dest,top_idx)
-
+    object_list = visualize_3D_heatmap(grid,heatmap_rgb,radius,src,dest,top_idx)
 
     # #draw point cloud
     pcd = o3d.geometry.PointCloud()
@@ -294,20 +295,26 @@ def plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx
     # mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
     # object_list.append(mesh_sphere)
 
-    o3d.visualization.draw_geometries(object_list)
+    return object_list
+    # o3d.visualization.draw_geometries(object_list)
 
-def visualize_3D_heatmap(locations,color,radius,dest,top_idx):
+def visualize_3D_heatmap(locations,color,radius,src,dest,top_idx):
 
     # locations = locations[top_idx,:]
     # color = color[top_idx,:]
     # raidus = raidus[top_idx]
     object_list = []
     #draw ground truth
-    mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=1)
-    # mesh_sphere.compute_vertex_normals()
-    mesh_sphere.paint_uniform_color([0, 0, 0])
-    mesh_sphere = mesh_sphere.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
-    object_list.append(mesh_sphere)
+    ground_truth = o3d.geometry.TriangleMesh.create_sphere(radius=1)
+    # ground_truth.compute_vertex_normals()
+    ground_truth.paint_uniform_color([0, 0, 0])
+    ground_truth = ground_truth.translate(np.array([[dest[0]],[dest[1]],[dest[2]]]))
+    object_list.append(ground_truth)
+
+    obj = o3d.geometry.TriangleMesh.create_sphere(radius=1)
+    obj.paint_uniform_color([0, 0, 0])
+    obj = obj.translate(np.array([[src[0] - 30],[src[1]],[src[2]]]))
+    object_list.append(obj)
 
     for idx in top_idx:
         mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius[idx])
@@ -319,6 +326,19 @@ def visualize_3D_heatmap(locations,color,radius,dest,top_idx):
     return object_list
     # o3d.visualization.draw_geometries(object_list)
 
+def compute_mesh(ply_object,displacement):
+    # ply_object.translate(displacement)
+    ply_object.estimate_normals()
+    distances = ply_object.compute_nearest_neighbor_distance()
+    avg_dist = np.mean(distances)
+    radius = 1.5 * avg_dist   
+
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+           ply_object,o3d.utility.DoubleVector([radius, radius * 2]))
+    
+    # trimesh = trimesh.Trimesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles),vertex_normals=np.asarray(mesh.vertex_normals)))
+
+    return mesh
 
 
 def calculate_radius(distance_diff_column,raidus_min = 0.1, raidus_max = 0.4):
