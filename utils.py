@@ -249,7 +249,7 @@ def get_top_match(batch,src,descriptor_object,descriptor_package,dest):
     #best_match
     src_match = tf.argmin(diff)
     #top 10 match
-    top_idx = tf.argsort(diff,direction='ASCENDING')[:30]
+    top_idx = tf.argsort(diff,direction='ASCENDING')[:10]
     top_best = tf.gather(grid,top_idx,axis = 0)
     top_matching_distance = tf.gather(diff,top_idx,axis = 0)[...,None]
 
@@ -325,6 +325,24 @@ def visualize_3D_heatmap(locations,color,radius,src,dest,top_idx):
         
     return object_list
     # o3d.visualization.draw_geometries(object_list)
+
+def visualize_ground_truth(batch,src,dest,descriptor_object,descriptor_package,top_idx,ply_test,shift):
+    
+    object_list = plot_3d_heat_map(batch,src,dest,descriptor_object,descriptor_package,top_idx)
+    pcd = o3d.io.read_point_cloud(ply_test[batch])
+    transformation_matrix = np.eye(4) * 10
+    transformation_matrix[-1,-1] = 1
+    pcd.transform(transformation_matrix)
+    pcd.translate([[10],[20],[0]])
+    pcd.translate(np.array(-shift))
+    object_list.append(pcd)
+    # mesh = compute_mesh(pcd,None)
+    # object_list.append(mesh)
+
+    o3d.visualization.draw_geometries(object_list)
+
+
+
 
 def compute_mesh(ply_object,displacement):
     # ply_object.translate(displacement)
