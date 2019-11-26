@@ -52,9 +52,21 @@ I used 3D U_Net to learn dense voxel-wise feature, and this feature will be used
 ![png](figs/recovered_matching_2.png)
 ![png](figs/recovered_matching_3.png)
 
-Above graph are the 3D heatmap(point cloud) for the package. The heatmap is based on the l2 difference of learned feature between the ground truth in the object(left half of the pointcloud), a black point, and all the voxel space in the package. The red dots represents the top 30 corresponding voxels. As show in the figures above, the model is able to learn similar geometry,points have similar geometry tend to have smaller feature distance distance. The color itself is picked from hsv color palette where hue has value range from 0 degree to 240 degree. Red color indicates smaller l2 distance and blue color indicates large l2 distance.
+Above graph are the 3D heatmap(point cloud) for the package. The heatmap is based on the l2 difference of learned feature between the ground truth in the object(left half of the pointcloud), a black point, and all the voxel space in the package. The red dots represents the top 30 corresponding voxels. As show in the figures above, the model is able to learn similar geometry,points have similar geometry tend to have smaller feature distance distance. The color itself is picked from hsv color palette where hue has value range from 0 degree to 240 degree. Red color indicates smaller l2 distance and blue color indicates large l2 distance. 
 
+## quantitative assessment
+#### Distribution of matching 
+![png](figs/results_1.png)
+#### Matching for each individual objects
+![png](figs/results_2.png)
 
+Above graph shows that based on learned descriptor, how well the ground truth matching is recovered. Three scenarios are considered: exactly match, one distance off match(distance between predicted matching and groundtruth matching <= 1), two distance off match(distance between predicted matching and groundtruth matching <= 2). Testing is done via entire 66 testing objects. The descriptor is able to correctly recover the groundtruth on average around 45% of the time. If addition tolerance is allowed, based on learned descriptor, around 85% or even around 95% of the ground truth can be recovered. Since truncated signed distance function of a single RGB-D of an object only gives a rough estimation of the object mesh, it is reasonable to assume certain degree of tolerane during testing.
+
+## Future Work
+
+1.Currently, the object I used is a single letter 'B'. In the future, more objects with more complex geometry will be included to test it's ability to generalize. 
+
+2.Include trained matching network to perform different tasks, such as robotic assembly.
 
 ## Reference
 ```
