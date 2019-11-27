@@ -76,3 +76,10 @@ Above graph shows that based on learned descriptor, how well the ground truth ma
     booktitle={CVPR}, 
     year={2017} 
 }
+
+@article{jang2018grasp2vec,
+  title={Grasp2vec: Learning object representations from self-supervised grasping},
+  author={Jang, Eric and Devin, Coline and Vanhoucke, Vincent and Levine, Sergey},
+  journal={arXiv preprint arXiv:1811.06964},
+  year={2018}
+}
