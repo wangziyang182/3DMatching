@@ -69,6 +69,9 @@ Above graph shows that based on learned descriptor, how well the ground truth ma
 
 2.Include trained matching network to perform different tasks, such as robotic assembly.
 
+## Project Report
+For more details,pleae find the [research project report](figs/3D_Matching_Report.pdf). 
+
 ## Reference
 ```
 @inproceedings{zeng20163dmatch, 
