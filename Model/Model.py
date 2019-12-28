@@ -131,9 +131,10 @@ class TDDD_Net(tf.keras.Model):
 
         return tensor
         
-    # @tf.function
+    @tf.function
     def compute_loss(self,tsdf_volume_object,tsdf_volume_package,match,non_match ,Non_March_Margin):
 
+        #change data representation
         dim_0_index_match = tf.range(match.shape[0])
         dim_0_index_match = tf.keras.backend.repeat_elements(dim_0_index_match, rep=match.shape[1], axis=0)
         dim_0_index_match = tf.reshape(dim_0_index_match,[match.shape[0],match.shape[1],1])
@@ -148,9 +149,6 @@ class TDDD_Net(tf.keras.Model):
         match = tf.dtypes.cast(match,tf.int32)
         non_match = tf.dtypes.cast(non_match,tf.int32)
 
-        # shift = match[:,:,:3] - match[:,:,3:6]
-        # shift = tf.dtypes.cast(shift,tf.float32)
-
         points = tf.concat([dim_0_index_match,match[:,:,:3]],axis = 2)
         match_points = tf.concat([dim_0_index_match,match[:,:,3:6]],axis = 2)
 
@@ -160,66 +158,40 @@ class TDDD_Net(tf.keras.Model):
         
         with tf.GradientTape() as tape:
 
+            #forward pass
             voxel_descriptor_object = self.call(tsdf_volume_object)
             voxel_descriptor_package = self.call(tsdf_volume_package)
-
             voxel_descriptor_combine = tf.concat([voxel_descriptor_object,voxel_descriptor_package],axis = -1)
 
-            #matching_descriptor
+            #gather matching points descriptor
             descriptor_points = tf.gather_nd(voxel_descriptor_object, points)
             descriptor_match_points =  tf.gather_nd(voxel_descriptor_package, match_points)
 
-            #non_matching_descriptor
+            #gather non-matching points descriptor
             descriptor_points_ = tf.gather_nd(voxel_descriptor_object,points_)
             descriptor_non_match_a = tf.gather_nd(voxel_descriptor_package, non_match_points_)
 
-
-            # #combine_feature
-            # combine_feature = tf.gather_nd(voxel_descriptor_combine,points)
-
-            # distance_shift = self.fc_layer_2(self.fc_layer_1(combine_feature))
-
-
-            # shift_loss = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square((distance_shift - shift)),axis = 1)))
-
-            #checking
-            print('checking')
-            # print(descriptor_points.shape)
-            # print(descriptor_points[0,49])
-            # print(voxel_descriptor_object[0,match[0,49,0],match[0,49,1],match[0,49,2]])
-
-            # print(descriptor_match_points[0,2])
-            # print(voxel_descriptor_package[0,match[0,2,3],match[0,2,4],match[0,2,5]])
-
+            #match loss
             match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_points - descriptor_match_points) , axis = 2))
-
             match_loss = tf.reduce_mean(tf.reduce_mean(match_l2_diff))
 
+            #non-match loss with hard-negative scaling
             non_match_l2_diff = tf.sqrt(tf.reduce_sum(tf.square(descriptor_points_ - descriptor_non_match_a) , axis = 2))
-
-            print('Non_March_Margin',Non_March_Margin)
             hard_negatives = tf.greater((Non_March_Margin - non_match_l2_diff),0)
             hard_negatives = tf.cast(hard_negatives,tf.int32)
             hard_negatives = tf.dtypes.cast(tf.reduce_sum(hard_negatives,axis = 1),tf.float32)
-
-
             non_match_loss = tf.reduce_mean((1/ (hard_negatives + 1)) * tf.reduce_sum(tf.maximum((Non_March_Margin - non_match_l2_diff),0),axis = 1))
 
-            #triple item loss
+            #constructive contrastive loss
             loss = match_loss + non_match_loss
-            # loss = match_loss
+
+            #recprd loss
             self.match_loss = match_loss
             self.non_match_loss = non_match_loss
             self.hard_negatives = hard_negatives
-            # print('shift_loss',shift_loss)
 
-            # print(match_l2_diff)
-            # print(tf.sqrt(match_l2_diff))
-
-
-        # print('\n' + 'backward_propogating' + '\n')
+        #compute gradients
         gradients = tape.gradient(loss,self.trainable_variables)
-        print(len(gradients))
         self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         return loss
 

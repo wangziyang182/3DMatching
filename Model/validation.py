@@ -50,7 +50,9 @@ def main():
     match_count = {}
 
     #load correspondence and tsdf_volume
-    for i in range(data.test_size):
+    # for i in range(data.test_size):
+    for i in range(1):
+
         match_count['Test_Object_{}'.format(i)] = {}
         match_count['Test_Object_{}'.format(i)]['exact_match'] = 0
         match_count['Test_Object_{}'.format(i)]['one_dist_off_match'] = 0
@@ -66,27 +68,32 @@ def main():
         descriptor_object = Model(tsdf_volume_test_object_batch).numpy()
         descriptor_package = Model(tsdf_volume_test_package_batch).numpy()
         
-        for j in tnrange(match[batch].shape[0]):
-        # for j in range(1):
+        print()
+        # for j in tnrange(match[batch].shape[0]):
+        for j in range(1):
 
             x_point_idx = j
             y_point_idx = j
 
+
+            x_point_idx = 4000
+            y_point_idx = 4000
+
             #get the src and destination ground truth for first batch point_idxth point 
+            print(match.shape)
             src = match[batch,x_point_idx,:][:3]
             dest = match[batch,y_point_idx,:][3:]
-            # print(src)
 
             top_match,top_matching_distance,top_idx = get_top_match(batch,src,descriptor_object,descriptor_package,dest)
 
             src_des = descriptor_object[batch,src[0],src[1],src[2]]
             dest_des = descriptor_package[batch,dest[0],dest[1],dest[2]]
 
-            # print('top_best',top_match)
-            # print('top_matching_distance',top_matching_distance)
+            print('top_best',top_match)
+            print('top_matching_distance',top_matching_distance)
 
             # print('matching descriptor',dest)
-            # print('Ground Truth',[dest[0],dest[1],dest[2]])
+            print('Ground Truth',[dest[0],dest[1],dest[2]])
             # print('ground_truth_diff',np.sqrt(np.sum((src_des - dest_des) ** 2)))
 
             # print(top_match[0,:].numpy())

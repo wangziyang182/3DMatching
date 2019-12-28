@@ -207,7 +207,7 @@ def draw_points(path,RT,cam_intr,vertices_a,vertices_b,num_pts = 10):
         cv2.imshow('img',img)
     cv2.waitKey()
 
-def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
+def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10,show_match = True):
     pcd = o3d.io.read_point_cloud(ply_path)
         
     #random sample
@@ -221,8 +221,11 @@ def view_geometry(ply_path,vertices_a,vertices_b,num_pts = 10):
     line_set.points = o3d.utility.Vector3dVector(points)
     line_set.lines = o3d.utility.Vector2iVector(lines)
     line_set.colors = o3d.utility.Vector3dVector(colors)
-
-    o3d.visualization.draw_geometries([pcd,line_set])
+    
+    if show_match:
+        o3d.visualization.draw_geometries([pcd,line_set])
+    else:
+        o3d.visualization.draw_geometries([pcd])
 
 
 def get_top_match(batch,src,descriptor_object,descriptor_package,dest):

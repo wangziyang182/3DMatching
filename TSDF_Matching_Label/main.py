@@ -53,7 +53,9 @@ inside_pts = WORKING_DIR.joinpath('frame-object.inside_pts.npy')
 vertices_x =  np.load(str(vertices))
 inside_pts_x = np.load(str(inside_pts))
 
-for i in range(n_imgs):
+# for i in range(n_imgs):
+for i in range(1):
+
     if not multi_images:
         tsdf_vol = TSDFVolume(vol_bnds,voxel_size=voxel_size)
     np.save(vol_dim_path,tsdf_vol._vol_dim)
@@ -80,7 +82,7 @@ for i in range(n_imgs):
 
     train_test_data_path = MODEL_DATA_DIR.joinpath('train_test_voxel-{number:06}.npy'.format(number = i))
     train_test_correspondence_path = MODEL_DATA_DIR.joinpath('train_test_correspondence-{number:06}.npy'.format(number = i))
-    
+ 
     np.save(train_test_data_path,tsdf_vol._tsdf_vol_cpu)
     np.save(train_test_correspondence_path,np.concatenate([voxel_x,voxel_y],axis = 1))
 
@@ -97,7 +99,7 @@ if multi_images:
 
 
 ##check if mathcing is correct
-view_geometry(str(mesh_path),inside_pts_x,inside_pts_y)
+view_geometry(str(mesh_path),inside_pts_x,inside_pts_y,show_match = False)
 # draw_points(color_image_path,RT,cam_intr,inside_pts_x,inside_pts_y)
     # tsdf_vol.find_voxel_correspondence(cam_intr,RT,keypts)
 
