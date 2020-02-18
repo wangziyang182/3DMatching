@@ -23,7 +23,7 @@ For blender download please visit blender [official website].
 ```
 /Applications/Blender.app/Contents/MacOS/Blender --background --python data_generation.py
 ```
-* The script will give you object pose, camera pose, camera intrinsic matrix, and the RGB-D images of objects and its corresponding packages. Below is a example of objects and its corresponding package and visualization of the matching in on the image level.
+* The script will give you object pose, camera pose, camera intrinsic matrix, and the RGB-D images of objects and its corresponding packages. Below is a example of objects and its corresponding package and visualization of the matching on the image level.
 
 ![png](/figs/object_package.png)
 
