@@ -42,7 +42,6 @@ python ./TSDF_Matching_Label/main.py
 ```
 python ./Model/train.py
 ```
-* The validation file (On Going)
 
 ## Voxel Feature Learning Model Architecture
 ![png](figs/3D_U_Net.png) 
