@@ -14,7 +14,7 @@ In this project, we learned dense voxel-space descriptor by projecting single RG
 * scikit-learn == 0.21.3  
 * tqdm == 4.36.1 
 
-For blender download please visit blender : [official website](https://www.blender.org/).
+For blender download please visit blender [official website](https://www.blender.org/).
 
 ## Usage
 * Mesh files are in the env/mesh folder
